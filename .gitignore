@@ -1,0 +1,10 @@
+.idea
+.DS_Store
+.venv
+tmp
+__pycache__
+*.pyc
+*.pyo
+/config.yaml
+
+.python-version
