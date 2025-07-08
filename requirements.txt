@@ -2,22 +2,16 @@
 fastapi==0.115.14
 uvicorn
 
-# Data Models
-pydantic==2.11.7
+# Database
+sqlmodel
+aiomysql
+cryptography
+
+# Configuration
+python-dotenv
 
 # HTTP Client
 httpx
 
-# Configuration
-python-dotenv
-PyYAML
-
-# CLI and Rich Output
-rich
-typer
-
 # File Upload Support
 python-multipart
-
-# WebSocket Support
-websockets
