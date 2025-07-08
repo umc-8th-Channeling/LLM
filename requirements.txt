@@ -1,0 +1,17 @@
+# Web Framework
+fastapi==0.115.14
+uvicorn
+
+# Database
+sqlmodel
+aiomysql
+cryptography
+
+# Configuration
+python-dotenv
+
+# HTTP Client
+httpx
+
+# File Upload Support
+python-multipart

@@ -1,0 +1,58 @@
+name: CD Pipeline
+
+on:
+  workflow_run:
+    # CI Pipeline이 실행된 후 실행
+    workflows: ["CI Pipeline"]
+    types:
+      - completed
+
+jobs:
+  deploy:
+    # 리눅스 서버의 Runner에서 실행
+    runs-on: self-hosted
+    steps:
+      # 현재 레포지토리 가져오기
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      # DEPLOY-CONFIGS 레포지토리 가져오기
+      - name: Checkout deploy-configs repository
+        uses: actions/checkout@v4
+        with:
+          repository: umc-8th-Channeling/DEPLOY-CONFIGS
+          path: deploy-configs
+      
+      # Docker 로그인
+      - name: Login to Dockerhub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_ACCESS_TOKEN }}
+
+      # Docker 이미지 Pull
+      - name: Pull Docker image
+        run: docker pull ${{ secrets.DOCKER_USERNAME }}/channeling-llm:latest
+
+      # fastapi-app이 실행중인 경우 중지
+      - name: Stop fastapi-app
+        run: |
+          cd deploy-configs
+          docker-compose stop fastapi-app || true
+          docker-compose rm -f fastapi-app || true
+
+      # fastapi-app 다시 실행
+      - name: Deploy fastapi-app
+        working-directory: deploy-configs
+        env:
+          S3_BUCKET_NAME: ${{ secrets.S3_BUCKET_NAME }}
+          AWS_REGION: ${{ secrets.S3_REGION }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.S3_ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_KEY }}
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_PORT: "3306"
+          DB_DATABASE: "channeling"
+          DB_USER: ${{ secrets.DB_USERNAME }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+        run: |
+          docker-compose up -d --no-deps fastapi-app
