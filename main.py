@@ -1,6 +1,9 @@
 from fastapi import FastAPI
 from core.database.database_config import test_connection
-from core.domain.report.controller.report_controller import router as report_router
+from domain.report.controller.report_controller import router as report_router
+from response.code.status.success_status import SuccessStatus
+from response.api_response import ApiResponse
+from response.code.status.error_status import ErrorStatus
 
 '''
 서버 시작 명령어: fastapi dev main.py
@@ -25,5 +28,6 @@ async def on_startup():
 @app.get("/health")
 async def health_check():
     """Docker 헬스체크용 엔드포인트"""
-    return {"status": "UP"}
+    return ApiResponse.on_success(SuccessStatus._OK, {"status": "UP"})
+
 
