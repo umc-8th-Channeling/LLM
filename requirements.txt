@@ -15,3 +15,6 @@ httpx
 
 # File Upload Support
 python-multipart
+
+#FastStream
+faststream[kafka]
