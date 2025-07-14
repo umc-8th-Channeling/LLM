@@ -24,7 +24,7 @@ class BaseProducer:
         """메시지를 Kafka 토픽에 발행"""
         try:
             # 메시지에 공통 메타데이터 추가
-            enriched_message = self.add_metadata(message)
+            enriched_message = self.add_metadata(message.model_dump())
 
             # 메시지 발행
             await self.broker.publish(

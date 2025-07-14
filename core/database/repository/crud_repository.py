@@ -9,7 +9,7 @@ T = TypeVar("T", bound=SQLModel)
 
 class CRUDRepository(Generic[T], ABC):
     
-    @property
+    
     @abstractmethod
     def model_class(self) -> type[T]:
         """서브클래스에서 구체적인 모델 클래스를 반환해야 함"""

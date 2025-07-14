@@ -6,6 +6,7 @@ uvicorn
 sqlmodel
 aiomysql
 cryptography
+pydantic-settings
 
 # Configuration
 python-dotenv
