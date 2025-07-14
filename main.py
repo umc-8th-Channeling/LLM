@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from core.database.database_config import test_connection
+from core.config.database_config import test_connection
 from domain.report.controller.report_controller import router as report_router
 from response.code.status.success_status import SuccessStatus
 from response.api_response import ApiResponse
