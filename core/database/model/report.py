@@ -11,7 +11,7 @@ class Report(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     
     # Foreign Key - Video 테이블 참조
-    video_id: int = Field(foreign_key="video.id")
+    video_id: int = Field(description="영상 ID")
     
     # 영상 정보
     title: str = Field(description="영상 제목")
