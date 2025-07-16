@@ -2,7 +2,7 @@ import asyncio
 import logging
 from faststream.kafka import KafkaBroker
 from core.config.kafka_config import KafkaConfig
-from domain.report.service.report_consumer import ReportConsumer
+from domain.report.service.report_consumer_impl import ReportConsumerImpl as ReportConsumer
 
 
 logging.basicConfig(level=logging.INFO)
@@ -15,16 +15,15 @@ async def main():
     broker = KafkaBroker(KafkaConfig().bootstrap_servers)
     
     report_consumer = ReportConsumer(broker)
-    report_consumer.register_handler("report-requests", report_consumer.handle_overview)
-    report_consumer.register_handler("analysis-generation", report_consumer.handle_analysis)
-    report_consumer.register_handler("idea-generation", report_consumer.handle_idea)
-    
-     
+    report_consumer.register_handler("overview-topic", report_consumer.handle_overview)
+    report_consumer.register_handler("analysis-topic", report_consumer.handle_analysis)
+    report_consumer.register_handler("idea-topic", report_consumer.handle_idea)
+
     await broker.start()
     logger.info("= Kafka Broker 시작 완료")
 
     # Consumer 시작
-    topics = ["report-requests", "analysis-generation", "idea-generation"]
+    topics = ["overview-topic", "analysis-topic", "idea-topic"]
     await report_consumer.start_consuming(topics)
     logger.info(f"= Kafka Consumer 시작: {topics}")
     
