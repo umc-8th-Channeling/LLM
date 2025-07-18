@@ -1,22 +1,26 @@
-from fastapi import APIRouter, HTTPException
+
+from fastapi import APIRouter
+from core.config.kafka_config import KafkaConfig
+from core.database.model.task import Status
 from core.kafka.message import Message
-from core.database.model.report import Report
 from core.kafka.message import Step
 from domain.report.repository.report_repository import ReportRepository
 from domain.task.repository.task_repository import TaskRepository
 from domain.report.service.report_producer import ReportProducer
-from faststream.kafka import KafkaBroker
-from core.config.kafka_config import KafkaConfig
+from core.kafka.kafka_broker import kafka_broker
+from response.api_response import ApiResponse
+from response.code.status.success_status import SuccessStatus
 
 
 router = APIRouter(prefix="/reports", tags=["reports"])
 
 report_repository = ReportRepository()
 task_repository = TaskRepository()
-report_producer = ReportProducer(KafkaBroker, KafkaConfig)
+kafka_config = KafkaConfig()
+report_producer = ReportProducer(kafka_broker, kafka_config)
 
 @router.post("")
-async def create_report(video_id: int) -> int:
+async def create_report(video_id: int):
     """
     리포트 생성을 시작합니다.
     parameters:
@@ -30,7 +34,12 @@ async def create_report(video_id: int) -> int:
     print(f"Report created with ID: {report.id}")
     
     # task 생성
-    task_data = {"report_id": report.id}
+    task_data = {
+        "report_id": report.id, 
+        "overview_status": Status.PENDING, 
+        "analysis_status": Status.PENDING, 
+        "idea_status": Status.PENDING
+        }
     task = await task_repository.save(data=task_data)
     print(f"Task created with ID: {task.id}")
 
@@ -54,9 +63,8 @@ async def create_report(video_id: int) -> int:
     )
 
     # 메시지 발행
-    report_producer.send_message("overview-topic", overview_message)
-    report_producer.send_message("analysis-topic", analysis_message)
-    report_producer.send_message("idea-topic", idea_message)
+    await report_producer.send_message("overview-topic", overview_message)
+    await report_producer.send_message("analysis-topic", analysis_message)
+    await report_producer.send_message("idea-topic", idea_message)
 
-    # return task.id
-    return None
+    return ApiResponse.on_success(SuccessStatus._OK, {"task_id": task.id})
