@@ -6,6 +6,7 @@ uvicorn
 sqlmodel
 aiomysql
 cryptography
+pydantic-settings
 
 # Configuration
 python-dotenv
@@ -15,3 +16,6 @@ httpx
 
 # File Upload Support
 python-multipart
+
+#FastStream
+faststream[kafka]
