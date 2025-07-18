@@ -2,7 +2,7 @@ from typing import Dict, TypeVar, Generic, Any, Optional
 from abc import ABC, abstractmethod
 from sqlmodel import SQLModel, select
 from sqlalchemy import update
-from core.config.database_config import get_async_session
+from core.config.database_config import AsyncSessionLocal
 
 
 T = TypeVar("T", bound=SQLModel)
@@ -33,15 +33,13 @@ class CRUDRepository(Generic[T], ABC):
     
     async def _create_new(self, data: Dict[str, Any]) -> T:
         """새 레코드 생성"""
-        async_session = get_async_session()
-        
-        async with async_session() as session:
+        async with AsyncSessionLocal() as session:
             # id 제거 (자동 생성되므로)
             data_copy = data.copy()
             data_copy.pop("id", None)
             
             # 모델 인스턴스 생성
-            instance = self.model_class(**data_copy)
+            instance = self.model_class()(**data_copy)
             
             session.add(instance)
             await session.commit()
@@ -50,33 +48,29 @@ class CRUDRepository(Generic[T], ABC):
     
     async def _update_partial(self, data: Dict[str, Any]) -> T:
         """기존 레코드 부분 업데이트"""
-        async_session = get_async_session()
-        
-        async with async_session() as session:
+        async with AsyncSessionLocal() as session:
             record_id = data.pop("id")
             
             # 빈 데이터가 아닌 경우에만 업데이트
             if data:
                 # 부분 업데이트 실행
-                stmt = update(self.model_class).where(
-                    self.model_class.id == record_id
+                stmt = update(self.model_class()).where(
+                    self.model_class().id == record_id
                 ).values(**data)
                 await session.execute(stmt)
                 await session.commit()
             
             # 업데이트된 레코드 조회 후 반환
             result = await session.execute(
-                select(self.model_class).where(self.model_class.id == record_id)
+                select(self.model_class()).where(self.model_class().id == record_id)
             )
             return result.scalar_one()
     
     async def find_by_id(self, id: int) -> Optional[T]:
         """ID로 레코드 조회"""
-        async_session = get_async_session()
-        
-        async with async_session() as session:
+        async with AsyncSessionLocal() as session:
             result = await session.execute(
-                select(self.model_class).where(self.model_class.id == id)
+                select(self.model_class()).where(self.model_class().id == id)
             )
             return result.scalar_one_or_none()
        
