@@ -39,3 +39,4 @@ class KafkaConfig(BaseSettings):
         # 환경 변수에서 설정값을 읽어옴
         env_prefix = "KAFKA_"
         env_file=".env"
+        extra = "ignore"
