@@ -34,8 +34,8 @@ jobs:
       - name: Clean up old Docker images
         run: |
           # hadoroke/channeling-llm의 이전 Docker 이미지 제거(latest 제외)
-          docker images hadoroke/channeling-llm --format "table {{.Repository}}:{{.Tag}}\t{{.ID}}" | \
-          grep -v latest | awk '{print $2}' | xargs -r docker rmi -f
+          docker images hadoroke/channeling-llm --format "{{.ID}}" | \
+          head -n -1 | xargs -r docker rmi -f
 
           # dangling 이미지 제거
           docker image prune -f
