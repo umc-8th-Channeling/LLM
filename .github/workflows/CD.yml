@@ -29,7 +29,17 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_ACCESS_TOKEN }}
+      
+      # 이전 Docker 이미지 제거
+      - name: Clean up old Docker images
+        run: |
+          # hadoroke/channeling-llm의 이전 Docker 이미지 제거(latest 제외)
+          docker images hadoroke/channeling-llm --format "table {{.Repository}}:{{.Tag}}\t{{.ID}}" | \
+          grep -v latest | awk '{print $2}' | xargs -r docker rmi -f
 
+          # dangling 이미지 제거
+          docker image prune -f
+      
       # Docker 이미지 Pull
       - name: Pull Docker image
         run: docker pull ${{ secrets.DOCKER_USERNAME }}/channeling-llm:latest
