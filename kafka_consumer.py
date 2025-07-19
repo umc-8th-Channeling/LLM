@@ -16,15 +16,16 @@ async def main():
     report_consumer.register_handler("overview-topic", report_consumer.handle_overview)
     report_consumer.register_handler("analysis-topic", report_consumer.handle_analysis)
     report_consumer.register_handler("idea-topic", report_consumer.handle_idea)
+    
+    # Consumer 시작
+    topics = ["overview-topic", "analysis-topic", "idea-topic"]
+    await report_consumer.start_consuming(topics)        
+    logger.info(f"= Kafka Consumer 시작: {topics}")
 
+    # Kafka Broker 시작
     await kafka_broker.start()
     logger.info("= Kafka Broker 시작 완료")
 
-    # Consumer 시작
-    topics = ["overview-topic", "analysis-topic", "idea-topic"]
-    await report_consumer.start_consuming(topics)
-    logger.info(f"= Kafka Consumer 시작: {topics}")
-    
     try:
         
         while True:
