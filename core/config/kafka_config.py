@@ -6,9 +6,8 @@ from pydantic_settings import BaseSettings
 class KafkaConfig(BaseSettings):
     """Kafka 설정 클래스(환경 변수와 기본값 관리)"""
 
-    # 브로커 서버 주소 등록(클러스터 구성 시 여러 주소 가능)
-    # bootstrap_servers: List[str] = ["broker:29092"]
-    bootstrap_servers: List[str] = ["localhost:9092"]
+    # 브로커 서버 주소 등록(환경변수에서 문자열로 받음)
+    bootstrap_servers: str = "localhost:9092"
     # 보안 프로토콜 설정
     security_protocol: str = "PLAINTEXT"
 
@@ -38,5 +37,9 @@ class KafkaConfig(BaseSettings):
     class Config:
         # 환경 변수에서 설정값을 읽어옴
         env_prefix = "KAFKA_"
-        env_file=".env"
+        env_file = ".env"
         extra = "ignore"
+
+
+# 전역에서 사용할 설정 인스턴스 (싱글톤 패턴)
+kafka_config = KafkaConfig()
