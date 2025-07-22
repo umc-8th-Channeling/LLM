@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from core.config.database_config import test_connection
+from core.config.database_config import test_pg_connection, test_mysql_connection
 from domain.report.controller.report_controller import router as report_router
 from response.code.status.success_status import SuccessStatus
 from response.api_response import ApiResponse
@@ -21,10 +21,15 @@ async def on_startup():
     print("🚀 서버 시작 중...")
     
     # DB 연결 테스트만 수행
-    if await test_connection():
-        print("✅ DB에 연결 완료")
+    if await test_mysql_connection():
+        print("✅ MySQL DB에 연결 완료")
     else:
-        print("❌ DB 연결 실패")
+        print("❌ MySQL DB 연결 실패")
+
+    if await test_pg_connection():
+        print("✅ PostgreSQL DB에 연결 완료")
+    else:
+        print("❌ PostgreSQL DB 연결 실패")
 
     # kafka 브로커 시작
     await kafka_broker.start()
