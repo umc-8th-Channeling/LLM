@@ -5,6 +5,7 @@ uvicorn
 # Database
 sqlmodel
 aiomysql
+asyncpg
 cryptography
 pydantic-settings
 
