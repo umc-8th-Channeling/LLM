@@ -73,4 +73,12 @@ class CRUDRepository(Generic[T], ABC):
                 select(self.model_class()).where(self.model_class().id == id)
             )
             return result.scalar_one_or_none()
-       
+    
+    async def delete(self, id: int) -> None:
+        """ID로 레코드 삭제"""
+        async with MySQLSessionLocal() as session:
+            instance = await self.find_by_id(id)
+            if instance:
+                await session.delete(instance)
+                await session.commit()
+            
