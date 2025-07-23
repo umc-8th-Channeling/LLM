@@ -6,6 +6,7 @@ uvicorn
 sqlmodel
 aiomysql
 asyncpg
+pgvector
 cryptography
 pydantic-settings
 
@@ -18,5 +19,9 @@ httpx
 # File Upload Support
 python-multipart
 
+# AI
+openai
+
 #FastStream
 faststream[kafka]
+
