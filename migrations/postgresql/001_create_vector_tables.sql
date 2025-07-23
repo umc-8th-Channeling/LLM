@@ -2,7 +2,7 @@
 -- pgvector 확장 설치 필요
 CREATE EXTENSION IF NOT EXISTS vector;
 -- 1. 콘텐츠 청크 테이블 (텍스트 데이터와 벡터 저장)
-CREATE TABLE IF NOT EXISTS content_chunks (
+CREATE TABLE IF NOT EXISTS content_chunk (
     id SERIAL PRIMARY KEY,
     -- 'video_info', 'channel_data', 'report'
     source_type VARCHAR(50) NOT NULL,
@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS content_chunks (
     created_at TIMESTAMP DEFAULT NOW()
 );
 -- 2. 미리 정의된 질문 템플릿 테이블
-CREATE TABLE IF NOT EXISTS question_templates (
+CREATE TABLE IF NOT EXISTS question_template (
     id SERIAL PRIMARY KEY,
     template_key VARCHAR(100) UNIQUE NOT NULL,
     -- 'video_evaluation', 'summary', 'comment_analysis'
