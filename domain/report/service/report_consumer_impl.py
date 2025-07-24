@@ -9,6 +9,13 @@ class ReportConsumerImpl(ReportConsumer):
         """보고서 개요 요청 처리"""
         logger.info(f"Handling overview request")
         # TODO: 보고서 개요 처리 로직 구현
+        # comments 가져오는 로직 구현
+        #1. get_comments_youtube.py의 get_comments 가져오기
+        # GetCommentsYoutube
+        #2. db 저장
+
+        #3. fd
+        
 
     async def handle_analysis(self, message: Dict[str, Any]):
         """보고서 분석 요청 처리"""
