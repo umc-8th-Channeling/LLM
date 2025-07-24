@@ -19,3 +19,6 @@ python-multipart
 
 #FastStream
 faststream[kafka]
+
+#greennet
+greenlet
