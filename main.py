@@ -1,9 +1,9 @@
 from fastapi import FastAPI
 from core.config.database_config import test_connection
 from domain.report.controller.report_controller import router as report_router
+from domain.channel.rating_controller import router as rating_router
 from response.code.status.success_status import SuccessStatus
 from response.api_response import ApiResponse
-from response.code.status.error_status import ErrorStatus
 from core.kafka.kafka_broker import kafka_broker
 
 '''
@@ -14,6 +14,7 @@ app = FastAPI(title="Channeling LLM API", version="1.0.0")
 
 # 라우터 등록
 app.include_router(report_router)
+app.include_router(rating_router)
 
 
 @app.on_event("startup")

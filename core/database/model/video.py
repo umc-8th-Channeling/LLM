@@ -5,7 +5,7 @@ from sqlmodel import SQLModel, Field
 
 
 class Video(SQLModel, table=True):
-    id: int
+    id: Optional[int] = Field(default=None, primary_key=True)
     channel_id: int = Field(description="채널 ID")
     youtube_video_id: str
     video_category: str # VideoCategory enum
