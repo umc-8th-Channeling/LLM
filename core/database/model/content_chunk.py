@@ -6,7 +6,7 @@ from pgvector.sqlalchemy import Vector
 
 
 class ContentChunk(SQLModel, table=True):
-    __tablename__ = "content_chunks"
+    __tablename__ = "content_chunk"
     
     id: Optional[int] = Field(default=None, primary_key=True)
     source_type: str = Field(max_length=50, nullable=False)  # 'video_info', 'channel_data', 'report'
