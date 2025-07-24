@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS content_chunk (
 -- 2. 미리 정의된 질문 템플릿 테이블
 CREATE TABLE IF NOT EXISTS question_template (
     id SERIAL PRIMARY KEY,
-    template_key VARCHAR(100) UNIQUE NOT NULL,
+    source_type VARCHAR(50) NOT NULL,
     -- 'video_evaluation', 'summary', 'comment_analysis'
     question_text TEXT NOT NULL,
     embedding vector(1536) NOT NULL,
@@ -42,5 +42,5 @@ CREATE TABLE IF NOT EXISTS question_template (
 --     created_at TIMESTAMP DEFAULT NOW()
 -- );
 -- 인덱스
-CREATE INDEX idx_source ON content_chunks(source_type, source_id);
-CREATE INDEX idx_embedding ON content_chunks USING ivfflat (embedding vector_cosine_ops);
+CREATE INDEX idx_source ON content_chunk(source_type, source_id);
+CREATE INDEX idx_embedding ON content_chunk USING ivfflat (embedding vector_cosine_ops);
