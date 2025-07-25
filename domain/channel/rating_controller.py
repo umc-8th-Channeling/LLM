@@ -2,8 +2,7 @@ from fastapi import APIRouter
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 
-from core.database.model.analysis import Analysis
-from domain.channel.analysis_repository import AnalysisRepository
+from core.database.model.video import Video
 from domain.channel.video_repository import VideoRepository
 
 router = APIRouter(prefix="/ratings", tags=["rating"])
@@ -12,11 +11,20 @@ router = APIRouter(prefix="/ratings", tags=["rating"])
 테스트 라우터
 """
 
-analysis_repository = AnalysisRepository()
 video_repository = VideoRepository()
 
 @router.get("")
-async def get_rating():
+async def get_rating(video_id: int):
+    # 영상 analytics 정보 조회
+    video = await video_repository.find_by_id(video_id)
+    if not video:
+        return {"error": f"Analysis data not found for video_id: {video_id}"}
+
+    # 1. SEO 분석
+    print(await analyze_seo(video))
+    # 2. 재방문률 분석
+    print(await analyze_revisit(video))
+
     return "ok"
 
 # """
@@ -67,24 +75,16 @@ async def get_rating():
 """
 SEO 분석
 """
-async def analyze_seo(self):
-    video_id = 17
+async def analyze_seo(video: Video):
 
-    # 영상 analytics 정보 조회
-    video = await video_repository.find_by_id(video_id)
-    analysis = await analysis_repository.find_by_video_id(video_id)
-    if not analysis:
-        return {"error": f"Analysis data not found for video_id: {video_id}"}
-
-
-    views = analysis.views
+    views = video.view
     if views == 0:
-        return 0; # TODO 조회수가 0인 경우 처리
+        return 0 # TODO 조회수가 0인 경우 처리
 
     # 1. 조회수 대비 참여율 계산
-    likes_per_1000_views = (analysis.likes or 0) / views * 1000
-    shares_per_1000_views = (analysis.shares or 0) / views * 1000
-    subscribers_gained_per_1000_views = (analysis.subscribers_gained or 0) / views * 1000
+    likes_per_1000_views = (video.like_count or 0) / views * 1000
+    shares_per_1000_views = (video.share_count or 0) / views * 1000
+    subscribers_gained_per_1000_views = (video.subscribers_gained or 0) / views * 1000
 
     # 2. 목표 수치 기준 정규화
     TARGETS = {
@@ -94,7 +94,7 @@ async def analyze_seo(self):
     }
 
     normalized_scores = {
-        # "duration": min((analysis.average_view_duration or 0) / video.duration, 1.0), # TODO Video api duration 항목 추가 필요
+        "duration": min((video.average_view_duration or 0) / video.duration, 1.0),
         "likes_rate": min(likes_per_1000_views / TARGETS["likes_per_1000_views"], 1.0),
         "shares_rate": min(shares_per_1000_views / TARGETS["shares_per_1000_views"], 1.0),
         "subscribers_rate": min(subscribers_gained_per_1000_views / TARGETS["subscribers_per_1000_views"], 1.0),
@@ -117,19 +117,20 @@ async def analyze_seo(self):
         total_score += score
 
     return {
-        "total_seo_score": round(total_score, 2),
+        "total_seo_score": round(total_score, 1),
         "details": final_scores,
-        "source_metrics": analysis.dict()
+        "source_metrics": video.dict()
     }
 
 """
 재방문률 분석
 """
-async def analyze_revisit(self, analysis: Analysis):
+async def analyze_revisit(video: Video):
     # 조회수 대비 (좋아요 + 공유 + 구독)
-    if analysis.views == 0:
+    if video.view == 0:
         return 0 # TODO 조회수가 0인 경우 처리
 
-    return (analysis.likes or 0) + (analysis.shares or 0) + (analysis.subscribers_gained or 0) / (analysis.views)
+    revisit = ((video.like_count or 0) + (video.share_count or 0) + (video.share_count or 0)) / video.view
+    return round(revisit * 100, 2)
 
 
