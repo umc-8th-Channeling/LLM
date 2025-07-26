@@ -1,6 +1,6 @@
 from sqlmodel import Session, select
 
-from core.config.database_config import AsyncSessionLocal
+# from core.config.database_config import AsyncSessionLocal
 from core.database.model.channel import Channel
 from core.database.model.video import Video
 from core.database.repository.crud_repository import CRUDRepository
@@ -14,11 +14,11 @@ class VideoRepository(CRUDRepository[Video]):
     async def find_by_channel_id(self, channel_id: int) -> list[Channel]:
         """
         """
-        async with AsyncSessionLocal() as session:
-            statement = select(self.model_class()).where(
-                self.model_class().channel_id == channel_id
-            )
+        # async with AsyncSessionLocal() as session:
+            # statement = select(self.model_class()).where(
+            #     self.model_class().channel_id == channel_id
+            # )
 
-            result = await session.execute(statement)
-
-            return result.scalars().all()
+            # result = await session.execute(statement)
+# 
+            # return result.scalars().all()

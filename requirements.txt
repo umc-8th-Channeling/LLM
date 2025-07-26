@@ -21,6 +21,9 @@ python-multipart
 
 # AI
 openai
+langchain-core
+langchain-openai
+
 
 #FastStream
 faststream[kafka]
@@ -28,3 +31,7 @@ faststream[kafka]
 
 #greennet
 greenlet
+
+
+#youtube
+youtube-transcript-api

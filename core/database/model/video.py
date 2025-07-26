@@ -18,8 +18,8 @@ class Video(SQLModel, table=True):
     thumbnail: Optional[str] = Field(description="썸네일 URL")
     description: Optional[str] = Field(description="비디오 설명")
     # data v3
-    duration : Optional[int] = Field(description="비디오 길이 (초 단위)")
+    # duration : Optional[int] = Field(description="비디오 길이 (초 단위)")
     # analytics 항목
-    share_count: Optional[int] = Field(description="공유 수")
-    average_view_duration: Optional[int] = Field(description="평균 시청 시간 (초)")
-    subscribers_gained: Optional[int] = Field(description="구독자 증가 수")
+    # share_count: Optional[int] = Field(description="공유 수")
+    # average_view_duration: Optional[int] = Field(description="평균 시청 시간 (초)")
+    # subscribers_gained: Optional[int] = Field(description="구독자 증가 수")
