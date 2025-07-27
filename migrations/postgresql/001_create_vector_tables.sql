@@ -1,10 +1,15 @@
-
 -- pgvector 확장 설치 필요
 CREATE EXTENSION IF NOT EXISTS vector;
-
 -- ENUM 타입 정의
-CREATE TYPE source_type_enum AS ENUM ('video_info', 'channel_data', 'report', 'analysis', 'idea', 'video_evaluation', 'summary', 'comment_analysis');
-
+CREATE TYPE source_type_enum AS ENUM (
+    'VIDEO_EVALUATION',
+    'VIDEO_SUMMARY',
+    'COMMENT_REACTION',
+    'VIEWER_ESCAPE_ANALYSIS',
+    'ALGORITHM_OPTIMIZATION',
+    'PERSONALIZED_KEYWORDS',
+    'IDEA_RECOMMENDATION'
+);
 -- 1. 콘텐츠 청크 테이블 (텍스트 데이터와 벡터 저장)
 CREATE TABLE IF NOT EXISTS content_chunk (
     id SERIAL PRIMARY KEY,
@@ -16,7 +21,7 @@ CREATE TABLE IF NOT EXISTS content_chunk (
     -- 원본에서의 청크 순서 
     chunk_index INT NOT NULL,
     -- 벡터 데이터
-    embedding vector(3072) NOT NULL,
+    embedding vector(1536) NOT NULL,
     -- 메타데이터
     meta JSONB,
     -- 시간 관리
@@ -27,7 +32,7 @@ CREATE TABLE IF NOT EXISTS question_template (
     id SERIAL PRIMARY KEY,
     source_type source_type_enum NOT NULL,
     question_text TEXT NOT NULL,
-    embedding vector(3072) NOT NULL,
+    embedding vector(1536) NOT NULL,
     meta JSONB,
     created_at TIMESTAMP DEFAULT NOW()
 );
