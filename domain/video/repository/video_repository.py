@@ -1,8 +1,8 @@
 from sqlmodel import Session, select
 
 # from core.config.database_config import AsyncSessionLocal
-from core.database.model.channel import Channel
-from core.database.model.video import Video
+from domain.channel.model.channel import Channel
+from domain.video.model.video import Video
 from core.database.repository.crud_repository import CRUDRepository
 
 

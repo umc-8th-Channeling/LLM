@@ -1,7 +1,7 @@
 from typing import Any, Dict
 from domain.report.service.report_consumer import ReportConsumer
 from domain.rag.service.RagService import RagService
-from domain.channel.repository.video_repository import VideoRepository
+from domain.video.repository.video_repository import VideoRepository
 from domain.report.repository.report_repository import ReportRepository
 from domain.task.repository.task_repository import TaskRepository
 import logging

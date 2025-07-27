@@ -6,8 +6,8 @@ from dotenv import load_dotenv
 from core.config.database_config import PGSessionLocal
 from sqlmodel import SQLModel
 from sqlalchemy import text
-from core.database.model.content_chunk import ContentChunk
-from core.database.model.question_template import QuestionTemplate
+from domain.content_chunk.model.content_chunk import ContentChunk
+from domain.question_template.model.question_template import QuestionTemplate
 
 load_dotenv()
 

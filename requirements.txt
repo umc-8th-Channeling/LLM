@@ -23,7 +23,7 @@ python-multipart
 openai
 langchain-core
 langchain-openai
-
+langchain
 
 #FastStream
 faststream[kafka]
