@@ -1,4 +1,4 @@
-from external.youtube_service import youtubeService  # 유튜브 자막 처리 서비스
+from external.youtube.transcript_service import TranscriptService  # 유튜브 자막 처리 서비스
 from langchain_core.documents import Document
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import PromptTemplate
@@ -7,8 +7,11 @@ from langchain.chains.combine_documents import create_stuff_documents_chain
 
 
 class RagService:
-    def summarize_video(video_id: str) -> str:
-        context = youtubeService.get_formatted_transcript(video_id) #// 유튜브 자막 가져오기
+    def __init__(self):
+        self.transcript_service = TranscriptService()
+    
+    def summarize_video(self, video_id: str) -> str:
+        context = self.transcript_service.get_formatted_transcript(video_id) #// 유튜브 자막 가져오기
         print("정리된 자막 = ", context)
         print()
         documents = [Document(page_content=context)]# // 다큐멘트화 하기

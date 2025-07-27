@@ -1,7 +1,14 @@
 from youtube_transcript_api import YouTubeTranscriptApi #// 자막 가져오는 비공식 라이브러리 -> 로컬에서는 잘 작동하는데, 배포에서는 잘 될 지 모르겠음
 
-class youtubeService:
-    def get_formatted_transcript(video_id: str, languages=['ko', 'en']) -> str:
+
+class TranscriptService:
+    """YouTube 자막 처리 서비스"""
+    
+    def __init__(self):
+        """TranscriptService 초기화"""
+        pass
+    
+    def get_formatted_transcript(self, video_id: str, languages=['ko', 'en']) -> str:
         try:
             ytt_api = YouTubeTranscriptApi() #-> 해당 라이브러리는 구현체를 사용해야 함
             transcript_list = ytt_api.list(video_id) # -> 가능한 자막의 언어 리스트
