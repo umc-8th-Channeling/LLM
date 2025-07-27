@@ -1,4 +1,4 @@
-from domain.youtube.youtubeService import youtubeService  # 유튜브 자막 처리 서비스
+from external.youtube_service import youtubeService  # 유튜브 자막 처리 서비스
 from langchain_core.documents import Document
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import PromptTemplate
