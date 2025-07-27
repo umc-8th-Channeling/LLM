@@ -1,6 +1,6 @@
-from core.database.model.channel import Channel
-from core.database.model.video import Video
-from domain.channel.repository.video_repository import VideoRepository
+from domain.channel.model.channel import Channel
+from domain.video.model.video import Video
+from domain.video.repository.video_repository import VideoRepository
 
 video_repository = VideoRepository()
 

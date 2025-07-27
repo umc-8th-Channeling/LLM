@@ -1,7 +1,7 @@
 from typing import Any, Dict
 from domain.report.service.report_consumer import ReportConsumer
-from domain.rag.service.RagService import RagService
-from domain.channel.repository.video_repository import VideoRepository
+from external.rag.rag_service import RagService
+from domain.video.repository.video_repository import VideoRepository
 from domain.report.repository.report_repository import ReportRepository
 from domain.task.repository.task_repository import TaskRepository
 import logging
@@ -13,7 +13,7 @@ class ReportConsumerImpl(ReportConsumer):
     
 
 
-
+    rag_service = RagService()
     video_repository = VideoRepository()
     report_repository = ReportRepository()
     task_repository = TaskRepository()
@@ -55,7 +55,7 @@ class ReportConsumerImpl(ReportConsumer):
             youtube_video_id = getattr(video, "youtube_video_id", None)
             
             #요약 결과 조회
-            summary = RagService.summarize_video(youtube_video_id) 
+            summary = self.rag_service.summarize_video(youtube_video_id) 
             # 댓글 정보 조회 
             # 수치 정보 조회
 						

@@ -1,4 +1,4 @@
-from core.database.model.content_chunk import ContentChunk
+from domain.content_chunk.model.content_chunk import ContentChunk
 from core.database.repository.vector_repository import VectorRepository
 
 class ContentChunkRepository(VectorRepository[ContentChunk]):

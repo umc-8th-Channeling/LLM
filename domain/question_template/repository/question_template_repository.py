@@ -1,4 +1,4 @@
-from core.database.model.question_template import QuestionTemplate
+from domain.question_template.model.question_template import QuestionTemplate
 from core.database.repository.vector_repository import VectorRepository
 from typing import Dict, Any, List
 from core.config.database_config import PGSessionLocal

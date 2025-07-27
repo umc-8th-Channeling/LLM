@@ -1,7 +1,7 @@
 
 from fastapi import APIRouter
 from core.config.kafka_config import KafkaConfig
-from core.database.model.task import Status
+from domain.task.model.task import Status
 from core.kafka.message import Message
 from core.kafka.message import Step
 from domain.report.repository.report_repository import ReportRepository
