@@ -65,6 +65,16 @@ class VectorRepository(Generic[T], ABC):
             
         return chunks
 
+    async def save(self, data: Dict[str, Any]) -> T:
+        
+        async with PGSessionLocal() as session:
+            
+            # 모델 인스턴스 생성
+            instance = self.model_class()(**data)
+            session.add(instance)
+            await session.commit()
+            await session.refresh(instance)
+            return instance
     
     async def save_context(self, source_type: str, source_id: int, context: str, metadata: Dict[str, any] = None):
         """
@@ -91,6 +101,7 @@ class VectorRepository(Generic[T], ABC):
             # 예시로 print문 사용
             print(f"Saved chunk {i} with embedding: {embedding}")
 
+    
 
     async def search_similar(self, source_type: str, metadata: Dict[str, Any] = None, limit: int = 10) -> List[Dict[str, Any]]:
         """
