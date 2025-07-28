@@ -1,3 +1,5 @@
+from domain.comment.model.comment import Comment
+from domain.comment.model.comment_type import CommentType
 from external.youtube.transcript_service import TranscriptService  # 유튜브 자막 처리 서비스
 from langchain_core.documents import Document
 from langchain_openai import ChatOpenAI
@@ -5,7 +7,7 @@ from langchain_core.prompts import PromptTemplate
 from langchain_core.prompts.chat import ChatPromptTemplate, HumanMessagePromptTemplate
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from core.llm.prompt_template_manager import PromptTemplateManager
-from typing import List
+from typing import List, Dict, Any
 
 
 class RagService:
@@ -20,6 +22,24 @@ class RagService:
         
         query = "유튜브 영상 자막을 기반으로 10초 단위 개요를 위의 형식에 따라 작성해주세요."
         return self._execute_llm_chain(context, query, PromptTemplateManager.get_video_summary_prompt())
+
+    def classify_comment(self, comment: str) -> dict[str, Any]:
+        query= "유튜브 댓글을 분석하여 감정을 분류하고 JSON 형식으로 출력해주세요."
+        result = self._execute_llm_chain(comment, query, PromptTemplateManager.get_comment_reaction_prompt())
+        # LLM의 응답에서 comment_type 추출
+        try:
+            result= eval(result)
+            print("LLM 응답 = ", result)
+        except Exception as e:
+            print(f"Error parsing LLM response: {e}")
+            return {"comment_type":  CommentType.NEUTRAL}
+
+        return {
+            "comment_type": result.get("comment_type", CommentType.NEUTRAL)
+        }
+
+
+
     
     def _execute_llm_chain(self, context: str, query: str, prompt_template_str: str) -> str:
         # TODO: 
