@@ -1,4 +1,4 @@
-from core.database.model.report import Report
+from domain.report.model.report import Report
 from core.database.repository.crud_repository import CRUDRepository
 
 class ReportRepository(CRUDRepository[Report]):
