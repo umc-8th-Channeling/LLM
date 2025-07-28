@@ -8,7 +8,7 @@ from sqlmodel import SQLModel
 from sqlalchemy import text
 from domain.content_chunk.model.content_chunk import ContentChunk
 from domain.question_template.model.question_template import QuestionTemplate
-
+from core.enums.source_type import SourceTypeEnum
 load_dotenv()
 
 T = TypeVar("T", bound=SQLModel)
@@ -33,7 +33,7 @@ class VectorRepository(Generic[T], ABC):
     
     def __init__(self):
         self.openai_client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-        self.embedding_model = "text-embedding-3-large"
+        self.embedding_model = "text-embedding-3-small"
 
     @abstractmethod
     def model_class(self) -> type[T]:
@@ -48,7 +48,7 @@ class VectorRepository(Generic[T], ABC):
         )
         return response.data[0].embedding
     
-    def chunk_text(self, text: str, chunk_size: int = 50, overlap: int = 10) -> List[str]:
+    def chunk_text(self, text: str, chunk_size: int = 150, overlap: int = 15) -> List[str]:
         """텍스트를 청크로 분할"""
         chunks = []
         start = 0
@@ -76,7 +76,7 @@ class VectorRepository(Generic[T], ABC):
             await session.refresh(instance)
             return instance
     
-    async def save_context(self, source_type: str, source_id: int, context: str, metadata: Dict[str, any] = None):
+    async def save_context(self, source_type: SourceTypeEnum, source_id: int, context: str, meta: Dict[str, any] = None):
         """
         컨텍스트를 벡터 저장소에 저장
         parameters:
@@ -87,19 +87,17 @@ class VectorRepository(Generic[T], ABC):
         """
         chunks = self.chunk_text(context)
         for i, chunk in enumerate(chunks):
-            embedding = self.generate_embedding(chunk)
-            content_chunk = ContentChunk(
-                source_type=source_type,
-                source_id=source_id,
-                content=chunk,
-                chunk_index=i,
-                embedding=embedding,
-                metadata=metadata
-            )
-            # 벡터 저장소에 청크 저장
-            await self.model_class.save(content_chunk)
+            embedding = await self.generate_embedding(chunk)
+            await self.save({
+                "source_type": source_type,
+                "source_id": source_id,
+                "content": chunk,
+                "chunk_index": i,
+                "embedding": embedding,
+                "meta": meta
+            })
             # 예시로 print문 사용
-            print(f"Saved chunk {i} with embedding: {embedding}")
+            print(f"Saved chunk {i}")
 
     
 
