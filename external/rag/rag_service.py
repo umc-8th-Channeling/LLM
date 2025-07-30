@@ -8,6 +8,7 @@ from langchain_core.prompts.chat import ChatPromptTemplate, HumanMessagePromptTe
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from core.llm.prompt_template_manager import PromptTemplateManager
 from typing import List, Dict, Any
+import json
 
 
 class RagService:
@@ -24,18 +25,13 @@ class RagService:
         return self._execute_llm_chain(context, query, PromptTemplateManager.get_video_summary_prompt())
 
     def classify_comment(self, comment: str) -> dict[str, Any]:
-        query= "유튜브 댓글을 분석하여 감정을 분류하고 JSON 형식으로 출력해주세요."
+        query= "유튜브 댓글을 분석하여 감정을 분류하고 백틱(```)이나 설명 없이 순수 JSON으로 출력해주세요."
         result = self._execute_llm_chain(comment, query, PromptTemplateManager.get_comment_reaction_prompt())
-        # LLM의 응답에서 comment_type 추출
-        try:
-            result= eval(result)
-            print("LLM 응답 = ", result)
-        except Exception as e:
-            print(f"Error parsing LLM response: {e}")
-            return {"comment_type":  CommentType.NEUTRAL}
+        print("LLM 응답 = ", result)
 
+        result_json = json.loads(result)
         return {
-            "comment_type": result.get("comment_type", CommentType.NEUTRAL)
+            "comment_type" : CommentType.from_emotion_code(result_json.get("emotion"))
         }
 
 
