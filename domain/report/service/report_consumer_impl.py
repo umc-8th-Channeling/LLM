@@ -54,7 +54,9 @@ class ReportConsumerImpl(ReportConsumer):
             else:
                 logger.warning("report에 video_id가 없습니다.")
                 
-            # 여기 부터 rag 시작
+            """
+            여기 부터 rag 시작
+            """
             # 유튜브 영상 아이디 조회
             youtube_video_id = getattr(video, "youtube_video_id", None)
             
