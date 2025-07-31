@@ -8,7 +8,7 @@ import logging
 logger = logging.getLogger(__name__)
 load_dotenv()
 
-class VideoService:
+class VideoDetailService:
     """YouTube Video Data API 서비스"""
     
     def __init__(self):
