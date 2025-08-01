@@ -2,7 +2,7 @@ from typing import Any, Dict, Optional, Tuple
 from domain.content_chunk.repository.content_chunk_repository import ContentChunkRepository
 from domain.report.model.report import Report
 from domain.report.service.report_consumer import ReportConsumer
-from external.rag.rag_service import RagService
+from external.rag.rag_service_impl import RagServiceImpl
 from domain.video.repository.video_repository import VideoRepository
 from domain.report.repository.report_repository import ReportRepository
 from domain.task.repository.task_repository import TaskRepository
@@ -16,7 +16,7 @@ class ReportConsumerImpl(ReportConsumer):
     
 
 
-    rag_service = RagService()
+    rag_service = RagServiceImpl()
     video_repository = VideoRepository()
     report_repository = ReportRepository()
     task_repository = TaskRepository()
