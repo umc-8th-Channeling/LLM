@@ -1,6 +1,9 @@
 from typing import Any, Dict
+
+from domain.comment.service.comment_service import CommentService
 from domain.content_chunk.repository.content_chunk_repository import ContentChunkRepository
 from domain.report.service.report_consumer import ReportConsumer
+from domain.report.service.report_service import ReportService
 from external.rag.rag_service import RagService
 from domain.video.repository.video_repository import VideoRepository
 from domain.report.repository.report_repository import ReportRepository
@@ -8,6 +11,7 @@ from domain.task.repository.task_repository import TaskRepository
 import logging
 import time
 from core.enums.source_type import SourceTypeEnum
+from external.youtube.youtube_comment_service import YoutubeCommentService
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +24,9 @@ class ReportConsumerImpl(ReportConsumer):
     report_repository = ReportRepository()
     task_repository = TaskRepository()
     content_chunk_repository = ContentChunkRepository()
+    youtubecommentservice = YoutubeCommentService()
+    commentservice = CommentService()
+    reportService = ReportService()
 
     async def handle_overview(self, message: Dict[str, Any]):
         logger.info(f"Handling overview request")
@@ -72,7 +79,12 @@ class ReportConsumerImpl(ReportConsumer):
             )
             logger.info("요약 결과를 벡터 DB에 저장했습니다.")
 
-            # 댓글 정보 조회 
+            # 댓글 정보 조회
+            comments_by_youtube = await self.youtubecommentservice.get_comments(video_id,report_id)
+            comments_obj = await self.commentservice.convert_to_comment_objects(comments_by_youtube)
+            result = await self.commentservice.gather_classified_comments(comments_obj)
+            summarized_comments = await self.commentservice.summarize_comments_by_emotions_with_llm(result)
+
             # 수치 정보 조회
 						
             # 요약 정보 업데이트
