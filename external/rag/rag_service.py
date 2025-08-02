@@ -5,14 +5,16 @@ from langchain_core.prompts import PromptTemplate
 from langchain_core.prompts.chat import ChatPromptTemplate, HumanMessagePromptTemplate
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from core.llm.prompt_template_manager import PromptTemplateManager
-from typing import List
-
+from domain.content_chunk.repository.content_chunk_repository import ContentChunkRepository
 
 class RagService:
+
     def __init__(self):
         self.transcript_service = TranscriptService()
         self.llm = ChatOpenAI(model="gpt-4o-mini")  # LLM 모델 설정
-    
+        self.content_chunk_repo = ContentChunkRepository()
+
+
     def summarize_video(self, video_id: str) -> str:
         context = self.transcript_service.get_formatted_transcript(video_id)
         print("정리된 자막 = ", context)
@@ -20,6 +22,7 @@ class RagService:
         
         query = "유튜브 영상 자막을 기반으로 10초 단위 개요를 위의 형식에 따라 작성해주세요."
         return self._execute_llm_chain(context, query, PromptTemplateManager.get_video_summary_prompt())
+    
     
     def _execute_llm_chain(self, context: str, query: str, prompt_template_str: str) -> str:
         # TODO: 
@@ -47,3 +50,16 @@ class RagService:
         combine_chain = create_stuff_documents_chain(self.llm, chat_prompt)
         result = combine_chain.invoke({"input": query, "context": documents})
         return result
+    
+
+
+    def _execute_llm_direct(self, prompt: str) -> str:
+        """
+        이미 완성된 프롬프트 문자열을 바로 LLM에 넣어 실행하는 함수
+
+        :param prompt: 완성된 프롬프트 문자열
+        :return: LLM의 응답
+        """
+        # self.llm이 직접 프롬프트 문자열을 받아 실행하는 함수라고 가정
+        result = self.llm.invoke(prompt)
+        return result.content
