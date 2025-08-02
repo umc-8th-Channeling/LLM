@@ -1,18 +1,18 @@
+import json
+import logging
+import time
 from typing import Any, Dict
 
+from core.enums.source_type import SourceTypeEnum
 from domain.channel.repository import channel_repository
 from domain.channel.repository.channel_repository import ChannelRepository
 from domain.content_chunk.repository.content_chunk_repository import ContentChunkRepository
-from domain.idea.model.idea import Idea
 from domain.idea.repository.idea_repository import IdeaRepository
-from domain.report.service.report_consumer import ReportConsumer
-from external.rag.rag_service import RagService
-from domain.video.repository.video_repository import VideoRepository
 from domain.report.repository.report_repository import ReportRepository
+from domain.report.service.report_consumer import ReportConsumer
 from domain.task.repository.task_repository import TaskRepository
-import logging
-import time
-from core.enums.source_type import SourceTypeEnum
+from domain.video.repository.video_repository import VideoRepository
+from external.rag.rag_service import RagService
 
 logger = logging.getLogger(__name__)
 
@@ -106,11 +106,12 @@ class ReportConsumerImpl(ReportConsumer):
         """보고서 아이디어 요청 처리"""
         logger.info(f"Handling idea request")
 
-        # 메시지에서 video_id 추출
+        # 메시지에서 video_id 추출 TODO 예외처리
         report = await report_repository.find_by_id(message["report_id"])
         video = await video_repository.find_by_id(report.video_id)
         channel = await channel_repository.find_by_id(video.channel_id)
 
+        # 아이디어 분석 요청
         idea_results = await rag_service.analyze_idea(video, channel)
 
         logger.info(f"아이디어 분석 결과: {idea_results}")
@@ -118,12 +119,13 @@ class ReportConsumerImpl(ReportConsumer):
         # 아이디어 분석 결과를 Report에 저장
         ideas = []
         for idea_result in idea_results:
-            idea = Idea(
-                video_id=video.id,
-                title=idea_result.get("title"),
-                content=idea_result.get("description"),
-                hash_tag=idea_result.get("tags")
-            )
+            idea = {
+                "video_id": video.id,
+                "title": idea_result.get("title"),
+                "content": idea_result.get("description"),
+                "hash_tag": json.dumps(idea_result.get("tags"), ensure_ascii=False),
+                "is_book_marked": 0,
+            }
             await idea_repository.save(idea)
             ideas.append(idea)
 

@@ -1,19 +1,19 @@
+import json
 import logging
 
+from langchain.chains.combine_documents import create_stuff_documents_chain
+from langchain_core.documents import Document
+from langchain_core.prompts import PromptTemplate
+from langchain_core.prompts.chat import ChatPromptTemplate, HumanMessagePromptTemplate
+from langchain_openai import ChatOpenAI
+
 from core.enums.source_type import SourceTypeEnum
+from core.llm.prompt_template_manager import PromptTemplateManager
 from domain.channel.model.channel import Channel
 from domain.content_chunk.repository.content_chunk_repository import ContentChunkRepository
 from domain.video.model.video import Video
 from external.youtube.comment_service import CommentService
 from external.youtube.transcript_service import TranscriptService  # 유튜브 자막 처리 서비스
-from langchain_core.documents import Document
-from langchain_openai import ChatOpenAI
-from langchain_core.prompts import PromptTemplate
-from langchain_core.prompts.chat import ChatPromptTemplate, HumanMessagePromptTemplate
-from langchain.chains.combine_documents import create_stuff_documents_chain
-from core.llm.prompt_template_manager import PromptTemplateManager
-from typing import List
-import json
 
 
 class RagService:
@@ -60,48 +60,56 @@ class RagService:
 
     async def analyze_idea(self, video: Video, channel: Channel):
         # 필요한 데이터
-        query = "유튜브 채널에 대한 콘텐츠 아이디어를 생성해주세요."
+        # 1. 내 채널, 내 영상
+        origin_context = f"""
+        - 분석 채널명: {channel.name}
+        - 채널 컨셉: {channel.concept}
+        - 타겟 시청자: {channel.target}
+        - 분석 영상 제목: {video.title}
+        - 분석 영상 설명: {video.description}
+        """
+        logging.info("분석 기반 데이터(Origin) 생성 완료")
 
-        data = {
-            "channel": {
-                "name" : channel.name,
-                "target" : channel.name,
-                "concept" : channel.concept,
-                "hash_tag" : channel.channel_hash_tag,
-            },
-            "video": {
-                "title" : video.title,
-                "description" : video.description,
-                "category" : video.video_category,
-            },
-        }
-
-        # 해당 카테고리의 유튜브 인기 영상 가져오기 # TODO 카테고리가 없을 수 있는지 확인 (youtube api 내 기본값이 0)
-        # category_id = video.category_id if video.category_id else "0"
-        category_id = "0"
+        # 2. 인기 동영상 목록 유튜브 호출
+        # category_id = video.video_category if video.video_category else "0"
+        category_id = "0" # TODO 카테고리가 없을 수 있는지 확인 (youtube api 내 기본값이 0)
         popular_videos = self.comment_service.get_category_popular(category_id)
-        logging.info("인기 영상 조회 확인")
-        logging.info(len(popular_videos))
+        logging.info(f"카테고리 '{category_id}'의 인기 영상 {len(popular_videos)}개 조회 완료")
 
-        # 인기 영상 벡터 db 임베딩
+        # 3. 텍스트로 변환하여 Vector DB에 저장
         for popular in popular_videos:
-            context_str = json.dumps(popular, ensure_ascii=False, indent=2)
-            await self.content_chunk_repository.save_context(SourceTypeEnum.IDEA_RECOMMENDATION, video.id, context_str)
-        logging.info("임베딩 확인")
+            pop_video_text = f"""제목: {popular['video_title']}, 설명: {popular['video_description']},태그: {popular['video_hash_tag']},채널명: {popular['channel_title']}"""
+            await self.content_chunk_repository.save_context(
+                SourceTypeEnum.IDEA_RECOMMENDATION, video.id, pop_video_text)
+        logging.info("인기 영상 정보 Vector DB 저장 완료")
 
-        # 유사도 기준 5개 줍기
-        similar_video = await self.content_chunk_repository.search_similar(SourceTypeEnum.IDEA_RECOMMENDATION, metadata=None, limit=5)
-        logging.info("유사도 조회 확인")
+        # 4. 영상과 의미적으로 가장 유사한 '인기 영상' 청크를 검색
+        query_text = f"제목: {video.title}, 설명: {video.description}, 채널명: {channel.name}"
+        video_embedding = await self.content_chunk_repository.generate_embedding(query_text)
+        meta_data = {"query_embedding": str(video_embedding)}
 
-        # JSON 형식으로 context 생성
-        context_json = {
-            "popularity": similar_video,
-            "origin": data
-        }
-        context = json.dumps(context_json, ensure_ascii=False, indent=2)
-        logging.info("context 생성 확인")
+        similar_chunks = await self.content_chunk_repository.search_similar_test(
+            SourceTypeEnum.IDEA_RECOMMENDATION, metadata=meta_data, limit=5
+        )
+        logging.info(f"유사도 높은 인기 영상 청크 {len(similar_chunks)}개 검색 완료")
 
-        # llm 생성
-        result = self._execute_llm_chain(context, query, PromptTemplateManager.get_idea_prompt())
+        # 5. 검색된 청크(내용)를 텍스트로
+        popularity_context = "\n".join([chunk.get("content", "") for chunk in similar_chunks])
+        # prompt = PromptTemplateManager.get_idea_prompt()
 
-        return json.load(result, ensure_ascii=False, indent=2)
+        # TODO _execute_llm_chain
+        chain = PromptTemplateManager.get_idea_prompt | self.llm
+        result_str = await chain.ainvoke({
+            "context": origin_context,
+            "input": popularity_context
+        })
+
+        logging.info(f"LLM 아이디어 생성 결과: {result_str.content}")
+
+        # LLM의 응답 문자열을 JSON 파싱
+        try:
+            clean_json_str = result_str.content.strip().replace("```json", "").replace("```", "")
+            return json.loads(clean_json_str)
+        except json.JSONDecodeError:
+            logging.error("LLM 응답을 JSON으로 파싱하는 데 실패했습니다.")
+            return []

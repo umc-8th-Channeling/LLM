@@ -58,7 +58,7 @@ class CommentService:
 
         return comments
 
-    def get_category_popular(self, category_id: str, region_code: str = 'KR') -> Dict:
+    def get_category_popular(self, category_id: str, region_code: str = 'KR') -> list[dict]:
         """
         카테고리별 인기 순위 조회
         https://www.googleapis.com/youtube/v3/videoCategories?part=snippet&regionCode=KR (한국 기준 카테고리 목록 조회)
@@ -80,8 +80,17 @@ class CommentService:
             logger.info("유튜브 원본")
             logger.info(response)
 
-            return response['items']
+            videos = []
+            for item in response['items']:
+                video = {
+                    "video_title": item['snippet']['title'],
+                    "video_description": item['snippet']['description'],
+                    "channel_title": item['snippet']['channelTitle'],
+                    "video_hash_tag": item['snippet'].get('tags', []),
+                }
+                videos.append(video)
 
+            return videos
 
         except HttpError as e:
             if e.resp.status == 403:
