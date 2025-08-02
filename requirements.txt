@@ -35,3 +35,6 @@ greenlet
 
 #youtube
 youtube-transcript-api
+
+#trend
+serpapi
