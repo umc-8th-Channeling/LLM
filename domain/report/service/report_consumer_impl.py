@@ -1,5 +1,10 @@
 from typing import Any, Dict
+
+from domain.channel.repository import channel_repository
+from domain.channel.repository.channel_repository import ChannelRepository
 from domain.content_chunk.repository.content_chunk_repository import ContentChunkRepository
+from domain.idea.model.idea import Idea
+from domain.idea.repository.idea_repository import IdeaRepository
 from domain.report.service.report_consumer import ReportConsumer
 from external.rag.rag_service import RagService
 from domain.video.repository.video_repository import VideoRepository
@@ -11,20 +16,19 @@ from core.enums.source_type import SourceTypeEnum
 
 logger = logging.getLogger(__name__)
 
+rag_service = RagService()
+video_repository = VideoRepository()
+report_repository = ReportRepository()
+task_repository = TaskRepository()
+content_chunk_repository = ContentChunkRepository()
+idea_repository = IdeaRepository()
+channel_repository = ChannelRepository()
+
 class ReportConsumerImpl(ReportConsumer):
-    
-
-
-    rag_service = RagService()
-    video_repository = VideoRepository()
-    report_repository = ReportRepository()
-    task_repository = TaskRepository()
-    content_chunk_repository = ContentChunkRepository()
 
     async def handle_overview(self, message: Dict[str, Any]):
         logger.info(f"Handling overview request")
 
-        
         start_time = time.time()  # 시작 시간 기록
 
         try:
@@ -53,16 +57,16 @@ class ReportConsumerImpl(ReportConsumer):
                     logger.warning(f"video_id={video_id}에 해당하는 비디오가 없습니다.")
             else:
                 logger.warning("report에 video_id가 없습니다.")
-                
+
             # 여기 부터 rag 시작
             # 유튜브 영상 아이디 조회
             youtube_video_id = getattr(video, "youtube_video_id", None)
-            
-            #요약 결과 조회
-            summary = self.rag_service.summarize_video(youtube_video_id) 
+
+            # 요약 결과 조회
+            summary = self.rag_service.summarize_video(youtube_video_id)
 
             # 요약 결과만 출력
-            logger.info("요약 결과:\n%s", summary)     
+            logger.info("요약 결과:\n%s", summary)
 
             # 벡터 db에 저장       
             await self.content_chunk_repository.save_context(
@@ -74,17 +78,17 @@ class ReportConsumerImpl(ReportConsumer):
 
             # 댓글 정보 조회 
             # 수치 정보 조회
-						
+
             # 요약 정보 업데이트
             # ReportRepository.save({
             #       "id": report_id,  
             #       "summary": summary
-                   
+
             # })
-            
+
             # task 정보 업데이트
-            
-            
+
+
 
         except Exception as e:
             logger.error(f"handle_overview 처리 중 오류 발생: {e}")
@@ -93,15 +97,36 @@ class ReportConsumerImpl(ReportConsumer):
             elapsed_time = end_time - start_time
             logger.info(f"handle_overview 전체 처리 시간: {elapsed_time:.3f}초")
 
-        
-
     async def handle_analysis(self, message: Dict[str, Any]):
         """보고서 분석 요청 처리"""
         logger.info(f"Handling analysis request")
         # TODO: 보고서 분석 처리 로직 구현
 
-
     async def handle_idea(self, message: Dict[str, Any]):
         """보고서 아이디어 요청 처리"""
         logger.info(f"Handling idea request")
-        # TODO: 보고서 아이디어 처리 로직 구현
+
+        # 메시지에서 video_id 추출
+        report = await report_repository.find_by_id(message["report_id"])
+        video = await video_repository.find_by_id(report.video_id)
+        channel = await channel_repository.find_by_id(video.channel_id)
+
+        idea_results = await rag_service.analyze_idea(video, channel)
+
+        logger.info(f"아이디어 분석 결과: {idea_results}")
+
+        # 아이디어 분석 결과를 Report에 저장
+        ideas = []
+        for idea_result in idea_results:
+            idea = Idea(
+                video_id=video.id,
+                title=idea_result.get("title"),
+                content=idea_result.get("description"),
+                hash_tag=idea_result.get("tags")
+            )
+            await idea_repository.save(idea)
+            ideas.append(idea)
+
+        # TODO 공통 메서드 한 번에 저장되도록 확인
+
+

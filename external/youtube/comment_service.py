@@ -1,24 +1,27 @@
-from googleapiclient.discovery import build
 import os
+from typing import Dict
+
+from googleapiclient.discovery import build, logger
+from googleapiclient.errors import HttpError
 
 
 class CommentService:
     """YouTube 댓글 처리 서비스"""
-    
+
     def __init__(self):
-        
+
         self.api_key = os.getenv('YOUTUBE_API_KEY')
         self.youtube = build('youtube', 'v3', developerKey=self.api_key)
-    
+
     def get_comments(self, video_id: str, report_id: int) -> list[dict]:
         #특정 video의 모든 댓글을 가져오는 함수
         comments = []
         response = self.youtube.commentThreads().list(
-            part='snippet,replies', 
-            videoId=video_id, 
+            part='snippet,replies',
+            videoId=video_id,
             maxResults=100
         ).execute()
-        
+
         while response:
             for item in response['items']:
                 comment = item['snippet']['topLevelComment']['snippet']
@@ -30,7 +33,7 @@ class CommentService:
                     "report_id": report_id
                 })
 
-                
+
                 if item['snippet']['totalReplyCount'] > 0:
                     for reply_item in item['replies']['comments']:
                         reply = reply_item['snippet']
@@ -42,7 +45,7 @@ class CommentService:
                             "report_id": report_id
                         })
 
-            
+
             if 'nextPageToken' in response:
                 response = self.youtube.commentThreads().list(
                     part='snippet,replies',
@@ -52,5 +55,40 @@ class CommentService:
                 ).execute()
             else:
                 break
-                
+
         return comments
+
+    def get_category_popular(self, category_id: str, region_code: str = 'KR') -> Dict:
+        """
+        카테고리별 인기 순위 조회
+        https://www.googleapis.com/youtube/v3/videoCategories?part=snippet&regionCode=KR (한국 기준 카테고리 목록 조회)
+        """
+
+        self.api_key = os.getenv('YOUTUBE_API_KEY')
+        self.youtube = build('youtube', 'v3', developerKey=self.api_key)
+
+        try:
+            # 해당 카테고리의 인기 영상 조회
+            response = self.youtube.videos().list(
+                part='snippet,statistics',
+                chart='mostPopular',
+                videoCategoryId=category_id,
+                regionCode=region_code,
+                maxResults=3
+            ).execute()
+
+            logger.info("유튜브 원본")
+            logger.info(response)
+
+            return response['items']
+
+
+        except HttpError as e:
+            if e.resp.status == 403:
+                logger.error("YouTube API quota exceeded")
+            else:
+                logger.error(f"HTTP error occurred: {e}")
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error in get_category_benchmarks: {e}")
+            raise
