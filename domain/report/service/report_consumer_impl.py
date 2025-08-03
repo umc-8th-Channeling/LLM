@@ -81,7 +81,7 @@ class ReportConsumerImpl(ReportConsumer):
             logger.info("요약 결과를 벡터 DB에 저장했습니다.")
 
             # 댓글 정보 조회
-            comments_by_youtube = await self.youtubecommentservice.get_comments(video_id,report_id)
+            comments_by_youtube = await self.youtubecommentservice.get_comments(youtube_video_id,report_id)
             comments_obj = await self.commentservice.convert_to_comment_objects(comments_by_youtube)
             result = await self.commentservice.gather_classified_comments(comments_obj)
             summarized_comments = await self.commentservice.summarize_comments_by_emotions_with_llm(result)
