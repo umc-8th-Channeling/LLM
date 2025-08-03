@@ -8,7 +8,7 @@ class ReportService:
     def __init__(self):
         self.report_repository = ReportRepository()
 
-    async def update_report_count(self, report_id: int, comment_dict:DefaultDict[str,List[Comment]]) -> bool:
+    async def update_report_emotion_counts(self, report_id: int, comment_dict:DefaultDict[str,List[Comment]]) -> bool:
         """
         성공 시 True, 실패 시 False를 반환합니다.
         """
