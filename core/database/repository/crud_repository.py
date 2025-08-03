@@ -1,4 +1,4 @@
-from typing import Dict, TypeVar, Generic, Any, Optional
+from typing import Dict, TypeVar, Generic, Any, Optional, List
 from abc import ABC, abstractmethod
 from sqlmodel import SQLModel, select
 from sqlalchemy import update
@@ -30,7 +30,15 @@ class CRUDRepository(Generic[T], ABC):
         else:
             # INSERT - 새 레코드 생성
             return await self._create_new(data)
-    
+
+    async def save_bulk(self, comments_entities: List[T]) -> List[T]:
+        """여러 엔티티를 한 번에 저장"""
+        async with MySQLSessionLocal() as session:
+            session.add_all(comments_entities)
+            await session.commit()
+        return comments_entities
+
+
     async def _create_new(self, data: Dict[str, Any]) -> T:
         """새 레코드 생성"""
         async with MySQLSessionLocal() as session:
