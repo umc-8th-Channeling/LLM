@@ -133,7 +133,6 @@ Google Trends 데이터를 기반으로 현재 가장 주목받는 키워드를 
 1. 채널 정보:
    - 채널 컨셉: {channel_concept}
    - 타겟 시청자: {target_audience}
-   - 기존 콘텐츠 카테고리: {content_categories} (없을 경우 'N/A')
 
 2. 트렌드 생성 기준:
    - 현재 시점({current_date})의 사회적 트렌드를 반영

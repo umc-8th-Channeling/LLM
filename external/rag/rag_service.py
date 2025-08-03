@@ -98,8 +98,7 @@ class RagService:
     def analyze_channel_trends(
         self,
         channel_concept: str,
-        target_audience: str,
-        content_categories: Optional[str] = "N/A"
+        target_audience: str
 
     ) -> Dict:
         """
@@ -108,7 +107,6 @@ class RagService:
         Args:
             channel_concept: 채널 컨셉
             target_audience: 타겟 시청자
-            content_categories: 기존 콘텐츠 카테고리
             
         Returns:
             채널 맞춤형 트렌드 분석 결과
@@ -119,7 +117,6 @@ class RagService:
         context = {
             "channel_concept": channel_concept,
             "target_audience": target_audience,
-            "content_categories": content_categories,
             "current_date": current_date
         }
         
