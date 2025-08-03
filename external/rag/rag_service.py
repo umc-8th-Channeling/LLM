@@ -1,16 +1,20 @@
 from external.youtube.transcript_service import TranscriptService  # 유튜브 자막 처리 서비스
+from external.youtube.trend_service import TrendService  # 트렌드 데이터 수집 서비스
 from langchain_core.documents import Document
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import PromptTemplate
 from langchain_core.prompts.chat import ChatPromptTemplate, HumanMessagePromptTemplate
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from core.llm.prompt_template_manager import PromptTemplateManager
-from typing import List
+from typing import List, Dict, Optional
+import json
+from datetime import datetime
 
 
 class RagService:
     def __init__(self):
         self.transcript_service = TranscriptService()
+        self.trend_service = TrendService()
         self.llm = ChatOpenAI(model="gpt-4o-mini")  # LLM 모델 설정
     
     def summarize_video(self, video_id: str) -> str:
@@ -47,3 +51,91 @@ class RagService:
         combine_chain = create_stuff_documents_chain(self.llm, chat_prompt)
         result = combine_chain.invoke({"input": query, "context": documents})
         return result
+    
+    def analyze_realtime_trends(self, limit: int = 6, geo: str = "KR") -> Dict:
+        """
+        실시간 트렌드를 분석하여 YouTube 콘텐츠에 적합한 형태로 반환
+        
+        Args:
+            limit: 분석할 트렌드 개수 (최대 6개)
+            geo: 지역 코드 (기본값: KR)
+            
+        Returns:
+            분석된 트렌드 정보
+        """
+        # 1. Google Trends에서 실시간 트렌드 가져오기
+        raw_trends = self.trend_service.get_realtime_trends(limit=limit*2, geo=geo)  # 여유있게 가져오기
+        
+        if not raw_trends:
+            return {"error": "트렌드 데이터를 가져올 수 없습니다."}
+        
+        current_date = datetime.now().strftime("%Y년 %m월 %d일")
+        
+        # 3. Context 구성
+        context = {
+            "trends_data": raw_trends,
+            "current_date": current_date,
+            "region": geo
+        }
+        
+        # 4. LLM에게 분석 요청
+        query = f"실시간 트렌드 중 YouTube 콘텐츠로 적합한 상위 {limit}개를 선정하고 분석해주세요."
+        prompt_template = PromptTemplateManager.get_trend_analysis_prompt()
+        
+        # 5. LLM 실행 및 결과 파싱
+        result_str = self._execute_llm_chain(
+            context=json.dumps(context, ensure_ascii=False),
+            query=query,
+            prompt_template_str=prompt_template
+        )
+        
+        try:
+            result = json.loads(result_str)
+            return result
+        except json.JSONDecodeError:
+            return {"error": "결과 파싱 오류", "raw_result": result_str}
+    
+    def analyze_channel_trends(
+        self,
+        channel_concept: str,
+        target_audience: str,
+        content_categories: Optional[str] = "N/A"
+
+    ) -> Dict:
+        """
+        채널 맞춤형 트렌드를 생성하고 분석
+        
+        Args:
+            channel_concept: 채널 컨셉
+            target_audience: 타겟 시청자
+            content_categories: 기존 콘텐츠 카테고리
+            
+        Returns:
+            채널 맞춤형 트렌드 분석 결과
+        """
+        # 1. Context 구성 (채널 정보)
+        current_date = datetime.now().strftime("%Y년 %m월 %d일")
+        
+        context = {
+            "channel_concept": channel_concept,
+            "target_audience": target_audience,
+            "content_categories": content_categories,
+            "current_date": current_date
+        }
+        
+        # 2. LLM에게 분석 요청
+        query = "채널에 최적화된 트렌드 키워드 6개를 생성하고 분석해주세요."
+        prompt_template = PromptTemplateManager.get_channel_customized_trend_prompt()
+        
+        # 3. LLM 실행 및 결과 파싱
+        result_str = self._execute_llm_chain(
+            context=json.dumps(context, ensure_ascii=False),
+            query=query,
+            prompt_template_str=prompt_template
+        )
+        
+        try:
+            result = json.loads(result_str)
+            return result
+        except json.JSONDecodeError:
+            return {"error": "결과 파싱 오류", "raw_result": result_str}
