@@ -27,6 +27,7 @@ class ReportConsumerImpl(ReportConsumer):
     youtubecommentservice = YoutubeCommentService()
     commentservice = CommentService()
     reportService = ReportService()
+    report_service=ReportService()
 
     async def handle_overview(self, message: Dict[str, Any]):
         logger.info(f"Handling overview request")
@@ -84,6 +85,7 @@ class ReportConsumerImpl(ReportConsumer):
             comments_obj = await self.commentservice.convert_to_comment_objects(comments_by_youtube)
             result = await self.commentservice.gather_classified_comments(comments_obj)
             summarized_comments = await self.commentservice.summarize_comments_by_emotions_with_llm(result)
+            await self.report_service.update_report_emotion_counts(report_id, summarized_comments)
 
             # 수치 정보 조회
 						

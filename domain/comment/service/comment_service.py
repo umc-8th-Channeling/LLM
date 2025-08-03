@@ -13,8 +13,8 @@ class CommentService:
         self.rag_service = RagService()
         self.comment_repository = CommentRepository()
 
-    async def summarize_comments_by_emotions_with_llm(self, comments_by_emotions: DefaultDict[CommentType, list[Comment]]) -> defaultdict[CommentType, List[str]]:
-        summarized_comments: defaultdict[CommentType, List[str]] = defaultdict(list)
+    async def summarize_comments_by_emotions_with_llm(self, comments_by_emotions: DefaultDict[CommentType, list[Comment]]) -> defaultdict[CommentType, List[Comment]]:
+        summarized_comments: defaultdict[CommentType, List[Comment]] = defaultdict(list)
 
         # 감정별로 요약
         for emotion, comments in comments_by_emotions.items():
@@ -25,18 +25,19 @@ class CommentService:
             # 해당 감정 그룹의 content만 개행으로 합치기
             contents_str = "\n".join(comment.content for comment in comments)
 
-            # LLM 서비스 호출 -> returns list of content strings
-            content_list = self.rag_service.summarize_comments(contents_str)
+            # LLM 서비스 호출 -> returns list[str]
+            summarized_contents = self.rag_service.summarize_comments(contents_str)
+
 
             # 요약 내용을 defaultdict에 추가 & DB 저장
-            for content_str in content_list:
-                summarized_comments[emotion].append(content_str)
+            for content in summarized_contents:
                 summarized_comment_obj = Comment(
                     comment_type=emotion,
-                    content=content_str,
+                    content=content,
                     report_id=comments[0].report_id
                 )
-                await self.comment_repository.save(summarized_comment_obj)
+                summarized_comments[emotion].append(summarized_comment_obj)
+            await self.comment_repository.save_bulk(summarized_comments[emotion])
 
         return summarized_comments
 
