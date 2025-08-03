@@ -2,7 +2,7 @@ from googleapiclient.discovery import build
 import os
 
 
-class CommentService:
+class YoutubeCommentService:
     """YouTube 댓글 처리 서비스"""
     
     def __init__(self):
@@ -10,7 +10,7 @@ class CommentService:
         self.api_key = os.getenv('YOUTUBE_API_KEY')
         self.youtube = build('youtube', 'v3', developerKey=self.api_key)
     
-    def get_comments(self, video_id: str, report_id: int) -> list[dict]:
+    async def get_comments(self, video_id: str, report_id: int) -> list[dict]:
         #특정 video의 모든 댓글을 가져오는 함수
         comments = []
         response = self.youtube.commentThreads().list(

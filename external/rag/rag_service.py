@@ -1,3 +1,5 @@
+from domain.comment.model.comment import Comment
+from domain.comment.model.comment_type import CommentType
 from external.youtube.transcript_service import TranscriptService  # 유튜브 자막 처리 서비스
 from langchain_core.documents import Document
 from langchain_openai import ChatOpenAI
@@ -5,6 +7,9 @@ from langchain_core.prompts import PromptTemplate
 from langchain_core.prompts.chat import ChatPromptTemplate, HumanMessagePromptTemplate
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from core.llm.prompt_template_manager import PromptTemplateManager
+from typing import List, Dict, Any
+import json
+
 from domain.content_chunk.repository.content_chunk_repository import ContentChunkRepository
 
 class RagService:
@@ -22,6 +27,35 @@ class RagService:
         
         query = "유튜브 영상 자막을 기반으로 10초 단위 개요를 위의 형식에 따라 작성해주세요."
         return self._execute_llm_chain(context, query, PromptTemplateManager.get_video_summary_prompt())
+
+    def classify_comment(self, comment: str) -> dict[str, Any]:
+        query= "유튜브 댓글을 분석하여 감정을 분류하고 백틱(```)이나 설명 없이 순수 JSON으로 출력해주세요."
+        result = self._execute_llm_chain(comment, query, PromptTemplateManager.get_comment_reaction_prompt())
+        print("LLM 응답 = ", result)
+
+        result_json = json.loads(result)
+        return {
+            "comment_type" : CommentType.from_emotion_code(result_json.get("emotion"))
+        }
+
+    def summarize_comments(self, comments: str):
+        query = (
+            "유튜브 댓글을 분석하여 요약하고 "
+            "백틱(```)이나 설명 없이 순수 JSON으로 출력해주세요."
+        )
+
+        result = self._execute_llm_chain(
+            comments, query, PromptTemplateManager.get_sumarlize_comment_prompt()
+        )
+        print("LLM 응답 = ", result)
+
+        result_list = json.loads(result)
+        contents = [item["content"] for item in result_list if isinstance(item, dict) and "content" in item]
+        return contents
+
+
+
+
     
     
     def _execute_llm_chain(self, context: str, query: str, prompt_template_str: str) -> str:
