@@ -12,7 +12,6 @@ from domain.report.service.report_producer import ReportProducer
 from core.kafka.kafka_broker import kafka_broker
 from domain.video.repository.video_repository import VideoRepository
 from external.rag.rag_service import RagService
-from external.youtube.comment_service import CommentService
 from response.api_response import ApiResponse
 from response.code.status.success_status import SuccessStatus
 

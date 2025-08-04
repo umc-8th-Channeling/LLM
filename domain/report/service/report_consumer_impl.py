@@ -1,45 +1,37 @@
+from typing import Any, Dict
 import logging
 import time
-from typing import Any, Dict
+import json
 
 from domain.comment.service.comment_service import CommentService
-
-from core.enums.source_type import SourceTypeEnum
-from domain.channel.repository import channel_repository
 from domain.channel.repository.channel_repository import ChannelRepository
 from domain.content_chunk.repository.content_chunk_repository import ContentChunkRepository
 from domain.idea.repository.idea_repository import IdeaRepository
-from domain.report.repository.report_repository import ReportRepository
 from domain.report.service.report_consumer import ReportConsumer
 from domain.report.service.report_service import ReportService
-from external.rag.rag_service import RagService
-from domain.video.repository.video_repository import VideoRepository
 from domain.report.repository.report_repository import ReportRepository
 from domain.task.repository.task_repository import TaskRepository
 from domain.video.repository.video_repository import VideoRepository
 from external.rag.rag_service import RagService
-import logging
-import time
+
 from core.enums.source_type import SourceTypeEnum
 from external.youtube.youtube_comment_service import YoutubeCommentService
 
 logger = logging.getLogger(__name__)
 
+video_repository = VideoRepository()
+report_repository = ReportRepository()
+task_repository = TaskRepository()
+idea_repository = IdeaRepository()
+channel_repository = ChannelRepository()
+content_chunk_repository = ContentChunkRepository()
+
+rag_service = RagService()
+youtubecommentservice = YoutubeCommentService()
+comment_service = CommentService()
+report_service = ReportService()
+
 class ReportConsumerImpl(ReportConsumer):
-    
-
-
-    rag_service = RagService()
-    video_repository = VideoRepository()
-    report_repository = ReportRepository()
-    task_repository = TaskRepository()
-    content_chunk_repository = ContentChunkRepository()
-    youtubecommentservice = YoutubeCommentService()
-    commentservice = CommentService()
-    reportService = ReportService()
-    report_service=ReportService()
-    idea_repository = IdeaRepository()
-    channel_repository = ChannelRepository()
 
     async def handle_overview(self, message: Dict[str, Any]):
         logger.info(f"Handling overview request")
@@ -54,7 +46,7 @@ class ReportConsumerImpl(ReportConsumer):
                 logger.error("report_id가 메시지에 없습니다")
                 return
 
-            report = await self.report_repository.find_by_id(report_id)
+            report = await report_repository.find_by_id(report_id)
             if not report:
                 logger.warning(f"report_id={report_id}에 해당하는 보고서가 없습니다.")
                 return
@@ -65,7 +57,7 @@ class ReportConsumerImpl(ReportConsumer):
             # 연관된 Video 정보 로그 출력 (예: report.video)
             video_id = getattr(report, "video_id", None)
             if video_id:
-                video = await self.video_repository.find_by_id(video_id)
+                video = await video_repository.find_by_id(video_id)
                 if video:
                     logger.info(f"연관된 비디오 정보: {video}")
                 else:
@@ -78,13 +70,13 @@ class ReportConsumerImpl(ReportConsumer):
             youtube_video_id = getattr(video, "youtube_video_id", None)
             
             #요약 결과 조회
-            summary = self.rag_service.summarize_video(youtube_video_id) 
+            summary = rag_service.summarize_video(youtube_video_id)
 
             # 요약 결과만 출력
             logger.info("요약 결과:\n%s", summary)     
 
             # 벡터 db에 저장       
-            await self.content_chunk_repository.save_context(
+            await content_chunk_repository.save_context(
                 source_type=SourceTypeEnum.VIDEO_SUMMARY,
                 source_id=report_id,
                 context=summary
@@ -92,11 +84,11 @@ class ReportConsumerImpl(ReportConsumer):
             logger.info("요약 결과를 벡터 DB에 저장했습니다.")
 
             # 댓글 정보 조회
-            comments_by_youtube = await self.youtubecommentservice.get_comments(video_id,report_id)
-            comments_obj = await self.commentservice.convert_to_comment_objects(comments_by_youtube)
-            result = await self.commentservice.gather_classified_comments(comments_obj)
-            summarized_comments = await self.commentservice.summarize_comments_by_emotions_with_llm(result)
-            await self.report_service.update_report_emotion_counts(report_id, summarized_comments)
+            comments_by_youtube = await youtubecommentservice.get_comments(video_id,report_id)
+            comments_obj = await comment_service.convert_to_comment_objects(comments_by_youtube)
+            result = await comment_service.gather_classified_comments(comments_obj)
+            summarized_comments = await comment_service.summarize_comments_by_emotions_with_llm(result)
+            await report_service.update_report_emotion_counts(report_id, summarized_comments)
 
             # 수치 정보 조회
 						
@@ -108,8 +100,6 @@ class ReportConsumerImpl(ReportConsumer):
             # })
             
             # task 정보 업데이트
-            
-            
 
         except Exception as e:
             logger.error(f"handle_overview 처리 중 오류 발생: {e}")

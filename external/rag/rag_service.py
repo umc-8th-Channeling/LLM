@@ -1,29 +1,30 @@
+from typing import Any
+import json
+import logging
+
 from langchain.chains.combine_documents import create_stuff_documents_chain
-from domain.comment.model.comment import Comment
-from domain.comment.model.comment_type import CommentType
-from external.youtube.transcript_service import TranscriptService  # 유튜브 자막 처리 서비스
 from langchain_core.documents import Document
 from langchain_core.prompts import PromptTemplate
 from langchain_core.prompts.chat import ChatPromptTemplate, HumanMessagePromptTemplate
 from langchain_openai import ChatOpenAI
-
 from core.enums.source_type import SourceTypeEnum
 from core.llm.prompt_template_manager import PromptTemplateManager
-from typing import List, Dict, Any
-import json
+from domain.comment.model.comment_type import CommentType
 from domain.channel.model.channel import Channel
 from domain.content_chunk.repository.content_chunk_repository import ContentChunkRepository
 from domain.video.model.video import Video
-from external.youtube.comment_service import CommentService
+from external.youtube.youtube_comment_service import YoutubeCommentService
 from external.youtube.transcript_service import TranscriptService  # 유튜브 자막 처리 서비스
 
+logger = logging.getLogger(__name__)
 
 class RagService:
+
     def __init__(self):
         self.transcript_service = TranscriptService()
         self.llm = ChatOpenAI(model="gpt-4o-mini")  # LLM 모델 설정
         self.content_chunk_repository = ContentChunkRepository()
-        self.comment_service = CommentService()
+        self.comment_service = YoutubeCommentService()
 
     def summarize_video(self, video_id: str) -> str:
         context = self.transcript_service.get_formatted_transcript(video_id)
@@ -111,7 +112,9 @@ class RagService:
         for popular in popular_videos:
             pop_video_text = f"""제목: {popular['video_title']}, 설명: {popular['video_description']},태그: {popular['video_hash_tag']},채널명: {popular['channel_title']}"""
             await self.content_chunk_repository.save_context(
-                SourceTypeEnum.IDEA_RECOMMENDATION, video.id, pop_video_text)
+                source_type=SourceTypeEnum.IDEA_RECOMMENDATION,
+                source_id=video.id,
+                context=pop_video_text)
         logging.info("인기 영상 정보 Vector DB 저장 완료")
 
         # 4. 영상과 의미적으로 가장 유사한 '인기 영상' 청크를 검색

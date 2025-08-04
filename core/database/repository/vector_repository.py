@@ -178,7 +178,7 @@ class VectorRepository(Generic[T], ABC):
             return chunks
 
     # 특정 유사도 조회
-    async def search_similar_test(self, source_type: str, metadata: Dict[str, Any] = None, limit: int = 10) -> List[
+    async def search_similar_test(self, source_type: SourceTypeEnum, metadata: Dict[str, Any] = None, limit: int = 10) -> List[
         Dict[str, Any]]:
 
         async with PGSessionLocal() as session:
@@ -205,7 +205,7 @@ class VectorRepository(Generic[T], ABC):
                 search_query,
                 {
                     "template_embedding": template_embedding,
-                    "source_type": source_type,
+                    "source_type": source_type.name,
                     "limit": limit
                 }
             )
