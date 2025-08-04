@@ -1,7 +1,7 @@
 from typing import Any, Dict
-import logging
 import time
 import json
+import logging
 
 from domain.comment.service.comment_service import CommentService
 from domain.channel.repository.channel_repository import ChannelRepository
@@ -17,7 +17,6 @@ from external.rag.rag_service import RagService
 from core.enums.source_type import SourceTypeEnum
 from external.youtube.youtube_comment_service import YoutubeCommentService
 
-logger = logging.getLogger(__name__)
 
 video_repository = VideoRepository()
 report_repository = ReportRepository()
@@ -30,6 +29,8 @@ rag_service = RagService()
 youtubecommentservice = YoutubeCommentService()
 comment_service = CommentService()
 report_service = ReportService()
+
+logger = logging.getLogger(__name__)
 
 class ReportConsumerImpl(ReportConsumer):
 
@@ -137,9 +138,8 @@ class ReportConsumerImpl(ReportConsumer):
                 "hash_tag": json.dumps(idea_result.get("tags"), ensure_ascii=False),
                 "is_book_marked": 0,
             }
-            await idea_repository.save(idea)
             ideas.append(idea)
 
-        # TODO 공통 메서드 한 번에 저장되도록 확인
+        await idea_repository.save_bulk(ideas)
 
 

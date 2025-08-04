@@ -82,33 +82,5 @@ async def create_report(video_id: int):
     return ApiResponse.on_success(SuccessStatus._OK, {"task_id": task.id})
 
 
-@router.get("/test")
-async def test_report():
-
-    # report 생성
-    report = await report_repository.find_by_id(1)
-    print(f"Report created with ID: {report.id}")
-
-    # task 생성
-    task = await task_repository.find_by_report_id(report.id)
-
-    if not task:
-        task_data = {
-            "report_id": report.id,
-            "overview_status": Status.PENDING,
-            "analysis_status": Status.PENDING,
-            "idea_status": Status.PENDING
-        }
-        task = await task_repository.save(data=task_data)
-
-    print(f"Task created with ID: {task.id}")
-
-    idea_message = Message(
-        task_id=task.id,
-        report_id=report.id,
-        step=Step.idea
-    )
-
-    await report_producer.send_message("idea-topic", idea_message)
 
 
