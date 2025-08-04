@@ -148,14 +148,7 @@ Google Trends 데이터를 기반으로 현재 가장 주목받는 키워드를 
         {{
             "keyword": "트렌드 키워드",
             "score": 85,  // 100점 만점 (위 기준의 합)
-            "score_breakdown": {{
-                "growth_rate": 40,
-                "content_suitability": 35
-            }},
-            "growth_rate": "+300%",  // increase_percentage를 기반으로 포맷팅 (5000+ = "Breakout")
-            "category": "카테고리",
-            "reason": "선정 이유 (1-2문장)",
-            "appeal_points": ["어필 포인트 1", "어필 포인트 2"]
+           
         }}
     ]
 }}
@@ -213,16 +206,13 @@ Google Trends 데이터를 기반으로 현재 가장 주목받는 키워드를 
             "score_breakdown": {{
                 "channel_fit": 35,
                 "target_interest": 28,
-                "differentiation": 17,
-                "growth_potential": 10
+                "differentiation": 17
             }},
             "relevance": "채널과의 구체적 연관성 설명",
             "appeal_points": ["타겟에게 어필되는 포인트 1", "타겟에게 어필되는 포인트 2"],
             "differentiation": "경쟁 채널 대비 차별화 요소"
         }}
-    ],
-    "rationale": "키워드 선정 이유와 현재 트렌드와의 연결점",
-    "warning": "주의사항이나 리스크 (있을 경우)"
+    ]
 }}
 
 주의사항:
