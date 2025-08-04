@@ -17,14 +17,22 @@ from external.youtube.youtube_comment_service import YoutubeCommentService
 from external.youtube.transcript_service import TranscriptService  # 유튜브 자막 처리 서비스
 
 logger = logging.getLogger(__name__)
+from typing import List, Dict, Any
+import json
+
+from domain.content_chunk.repository.content_chunk_repository import ContentChunkRepository
 
 class RagService:
+
 
     def __init__(self):
         self.transcript_service = TranscriptService()
         self.llm = ChatOpenAI(model="gpt-4o-mini")  # LLM 모델 설정
         self.content_chunk_repository = ContentChunkRepository()
         self.comment_service = YoutubeCommentService()
+
+        self.content_chunk_repo = ContentChunkRepository()
+
 
     def summarize_video(self, video_id: str) -> str:
         context = self.transcript_service.get_formatted_transcript(video_id)
@@ -63,6 +71,9 @@ class RagService:
 
 
 
+
+    
+    
     def _execute_llm_chain(self, context: str, query: str, prompt_template_str: str) -> str:
         # TODO: 
         # 벡터 db에서 관련 정보 검색 후 context에 추가하는 로직 필요
@@ -147,3 +158,16 @@ class RagService:
         except json.JSONDecodeError:
             logging.error("LLM 응답을 JSON으로 파싱하는 데 실패했습니다.")
             return []
+    
+
+
+    def _execute_llm_direct(self, prompt: str) -> str:
+        """
+        이미 완성된 프롬프트 문자열을 바로 LLM에 넣어 실행하는 함수
+
+        :param prompt: 완성된 프롬프트 문자열
+        :return: LLM의 응답
+        """
+        # self.llm이 직접 프롬프트 문자열을 받아 실행하는 함수라고 가정
+        result = self.llm.invoke(prompt)
+        return result.content
