@@ -1,6 +1,6 @@
 class PromptTemplateManager:
     """프롬프트 템플릿을 중앙에서 관리하는 클래스"""
-
+    
     @staticmethod
     def get_video_summary_prompt() -> str:
         """유튜브 영상 요약용 프롬프트 템플릿"""
@@ -37,7 +37,7 @@ II. 글쓰기와 재능 (0:25 - 0:59)
 질문: {input}
 문서 내용: {context}
 답변:""".strip()
-
+    
     @staticmethod
     def get_comment_reaction_prompt() -> str:
         """댓글 반응 분석용 프롬프트 템플릿"""
@@ -106,3 +106,35 @@ II. 글쓰기와 재능 (0:25 - 0:59)
 질문: {input}
 문서 내용: {context}
 답변:""".strip()
+
+    @staticmethod
+    def get_idea_prompt(input_data: dict) -> str:
+        """아이디어 추천용 프롬프트 템플릿"""
+        return f"""
+당신은 데이터 기반의 창의적인 유튜브 콘텐츠 기획 전문가입니다.
+제공된 인기 채널들(context)의 핵심 정보와 기존 영상 데이터(input)를 깊이 있게 분석하여, 
+채널의 성장을 이끌 새로운 콘텐츠 아이디어 3개를 추천해주세요.
+
+## 지시 사항:
+- origin 을 기반으로 채널의 특성과 기존 영상을 분석해주세요.
+- popularity 기반으로 인기 채널의 요인과 시청자들의 관심사를 분석하여 트렌드를 파악해주세요.
+- 각 아이디어는 '제목(title)', '상세 내용(description)', '추천 태그(tags)'를 반드시 포함해야 합니다.
+- 답변은 다른 설명 없이, 반드시 요청된 JSON 형식으로만 생성해주세요.
+
+## 출력 JSON 형식:
+```json
+[
+    {{
+        "title": "아이디어 제목",
+        "description": "아이디어 상세 내용",
+        "tags": ["태그1", "태그2", "태그3"]
+    }},
+]
+'''
+
+## 분석 대상 채널 정보 및 기존 영상 데이터 (origin, popularity):
+{input_data['context']}
+
+## 질문
+{input_data['input']}
+""".strip()
