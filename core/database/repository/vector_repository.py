@@ -176,5 +176,53 @@ class VectorRepository(Generic[T], ABC):
                 })
             
             return chunks
-    
+
+    # 특정 유사도 조회
+    async def search_similar_test(self, source_type: SourceTypeEnum, metadata: Dict[str, Any] = None, limit: int = 10) -> List[
+        Dict[str, Any]]:
+
+        async with PGSessionLocal() as session:
+
+            template_embedding = metadata.get("query_embedding")
+
+            # 2. 해당 source_type의 content_chunks 중 가장 유사한 것들 검색
+            search_query = text("""
+                                SELECT c.id,
+                                       c.source_type,
+                                       c.source_id,
+                                       c.content,
+                                       c.chunk_index,
+                                       c.meta,
+                                       c.created_at,
+                                       1 - (c.embedding <=> :template_embedding) as similarity
+                                FROM content_chunk c
+                                WHERE c.source_type = :source_type
+                                ORDER BY c.embedding <=> :template_embedding
+                LIMIT :limit
+                                """)
+
+            result = await session.execute(
+                search_query,
+                {
+                    "template_embedding": template_embedding,
+                    "source_type": source_type.name,
+                    "limit": limit
+                }
+            )
+
+            chunks = []
+            for row in result:
+                chunks.append({
+                    "id": row.id,
+                    "source_type": row.source_type,
+                    "source_id": row.source_id,
+                    "content": row.content,
+                    "chunk_index": row.chunk_index,
+                    "meta": row.meta,
+                    "created_at": row.created_at,
+                    "similarity": row.similarity
+                })
+
+            return chunks
+
     
