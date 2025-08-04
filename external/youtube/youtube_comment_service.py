@@ -1,3 +1,4 @@
+from googleapiclient.discovery import build
 import os
 from typing import Dict
 
@@ -5,23 +6,23 @@ from googleapiclient.discovery import build, logger
 from googleapiclient.errors import HttpError
 
 
-class CommentService:
+class YoutubeCommentService:
     """YouTube 댓글 처리 서비스"""
-
+    
     def __init__(self):
-
+        
         self.api_key = os.getenv('YOUTUBE_API_KEY')
         self.youtube = build('youtube', 'v3', developerKey=self.api_key)
-
-    def get_comments(self, video_id: str, report_id: int) -> list[dict]:
+    
+    async def get_comments(self, video_id: str, report_id: int) -> list[dict]:
         #특정 video의 모든 댓글을 가져오는 함수
         comments = []
         response = self.youtube.commentThreads().list(
-            part='snippet,replies',
-            videoId=video_id,
+            part='snippet,replies', 
+            videoId=video_id, 
             maxResults=100
         ).execute()
-
+        
         while response:
             for item in response['items']:
                 comment = item['snippet']['topLevelComment']['snippet']
@@ -33,7 +34,7 @@ class CommentService:
                     "report_id": report_id
                 })
 
-
+                
                 if item['snippet']['totalReplyCount'] > 0:
                     for reply_item in item['replies']['comments']:
                         reply = reply_item['snippet']
@@ -45,7 +46,7 @@ class CommentService:
                             "report_id": report_id
                         })
 
-
+            
             if 'nextPageToken' in response:
                 response = self.youtube.commentThreads().list(
                     part='snippet,replies',
@@ -55,7 +56,7 @@ class CommentService:
                 ).execute()
             else:
                 break
-
+                
         return comments
 
     def get_category_popular(self, category_id: str, region_code: str = 'KR') -> list[dict]:
