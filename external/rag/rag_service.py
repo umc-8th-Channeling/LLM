@@ -126,6 +126,8 @@ class RagService:
         except json.JSONDecodeError:
             return {"error": "결과 파싱 오류", "raw_result": result_str}
     
+    
+
     def analyze_channel_trends(
         self,
         channel_concept: str,
@@ -155,12 +157,29 @@ class RagService:
         query = "채널에 최적화된 트렌드 키워드 6개를 생성하고 분석해주세요."
         prompt_template = PromptTemplateManager.get_channel_customized_trend_prompt()
         
-        # 3. LLM 실행 및 결과 파싱
-        result_str = self._execute_llm_chain(
-            context=json.dumps(context, ensure_ascii=False),
-            query=query,
-            prompt_template_str=prompt_template
+        # 3. 채널 맞춤형 트렌드를 위한 특별 처리
+        documents = [Document(page_content=json.dumps(context, ensure_ascii=False))]
+        
+        # 필요한 모든 변수를 포함한 프롬프트 템플릿 생성
+        prompt = PromptTemplate(
+            input_variables=["input", "context", "channel_concept", "target_audience", "current_date"],
+            template=prompt_template
         )
+        
+        chat_prompt = ChatPromptTemplate.from_messages([
+            HumanMessagePromptTemplate(prompt=prompt)
+        ])
+        
+        # 체인 실행
+        combine_chain = create_stuff_documents_chain(self.llm, chat_prompt)
+        result_str = combine_chain.invoke({
+            "input": query,
+            "context": documents,
+            "channel_concept": channel_concept,
+            "target_audience": target_audience,
+            "current_date": current_date
+        })
+        
         
         try:
             result = json.loads(result_str)
