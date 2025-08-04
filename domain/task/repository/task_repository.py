@@ -1,5 +1,5 @@
-from domain.task.model.task import Task
 from core.database.repository.crud_repository import CRUDRepository
+from domain.task.model.task import Task
 
 
 class TaskRepository(CRUDRepository[Task]):
