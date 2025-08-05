@@ -15,6 +15,8 @@ from external.rag.rag_service import RagService
 from response.api_response import ApiResponse
 from response.code.status.success_status import SuccessStatus
 
+from domain.video.service.video_service import VideoService
+
 import logging
 
 
@@ -80,7 +82,4 @@ async def create_report(video_id: int):
     await report_producer.send_message("idea-topic", idea_message)
 
     return ApiResponse.on_success(SuccessStatus._OK, {"task_id": task.id})
-
-
-
 
