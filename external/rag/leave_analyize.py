@@ -1,4 +1,6 @@
 from typing import List
+
+from dotenv import load_dotenv
 from domain.content_chunk.repository.content_chunk_repository import ContentChunkRepository
 import external.youtube.analytics_service as analyticsServcie
 import external.rag.chunk_service as ChunkService # ← 지연 import로 순환참조 방지
@@ -9,7 +11,8 @@ from external.rag.rag_service import RagService
 import json
 from core.llm.prompt_template_manager import PromptTemplateManager
 from domain.channel.repository.channel_repository import ChannelRepository
-
+import os
+load_dotenv()
 
 transcript_service = TranscriptService()
 content_repository = ContentChunkRepository()
@@ -25,7 +28,7 @@ async def analyze_leave(video: Video) -> str:
 # 1. 영상, 채널 정보 가져오기
 
     # 구글 엑세스 토큰
-    token = "google.access.token"
+    token = os.getenv("GOOGLE_ACCESS_TOKEN")
     # 영상 가져오기
     youtube_video_id = video.youtube_video_id
     video_id = video.id
