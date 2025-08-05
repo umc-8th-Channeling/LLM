@@ -1,3 +1,4 @@
+
 from typing import Any, Dict, Optional, Tuple
 from typing import Any, Dict
 import time
@@ -12,9 +13,24 @@ from domain.idea.repository.idea_repository import IdeaRepository
 from domain.report.service.report_consumer import ReportConsumer
 from external.rag.rag_service_impl import RagServiceImpl
 from domain.video.repository.video_repository import VideoRepository
+from typing import Any, Dict
+import time
+import json
+import logging
+
+from domain.comment.service.comment_service import CommentService
+from domain.channel.repository.channel_repository import ChannelRepository
+from domain.content_chunk.repository.content_chunk_repository import ContentChunkRepository
+from domain.idea.repository.idea_repository import IdeaRepository
+from domain.report.service.report_consumer import ReportConsumer
+from domain.report.service.report_service import ReportService
+>>>>>>> develop
 from domain.report.service.report_service import ReportService
 from domain.report.repository.report_repository import ReportRepository
 from domain.task.repository.task_repository import TaskRepository
+from domain.video.repository.video_repository import VideoRepository
+from external.rag.rag_service import RagService
+
 from domain.video.repository.video_repository import VideoRepository
 from external.rag.rag_service import RagService
 
@@ -87,6 +103,7 @@ class ReportConsumerImpl(ReportConsumer):
             
         return report, video
 
+
     async def handle_overview(self, message: Dict[str, Any]):
         logger.info(f"Handling overview request")
 
@@ -97,10 +114,30 @@ class ReportConsumerImpl(ReportConsumer):
             result = await self._get_report_and_video(message)
             if not result:
                 return
-            
+
             report, video = result
             report_id = report.id
-            
+
+            report = await report_repository.find_by_id(report_id)
+            if not report:
+                logger.warning(f"report_id={report_id}에 해당하는 보고서가 없습니다.")
+                return
+
+            # Report 정보 로그 출력
+            logger.info(f"보고서 정보: {report}")
+
+            # 연관된 Video 정보 로그 출력 (예: report.video)
+            video_id = getattr(report, "video_id", None)
+            if video_id:
+                video = await video_repository.find_by_id(video_id)
+                if video:
+                    logger.info(f"연관된 비디오 정보: {video}")
+                else:
+                    logger.warning(f"video_id={video_id}에 해당하는 비디오가 없습니다.")
+            else:
+                logger.warning("report에 video_id가 없습니다.")
+                
+
             # 여기 부터 rag 시작
             # 유튜브 영상 아이디 조회
             youtube_video_id = getattr(video, "youtube_video_id", None)
@@ -119,18 +156,6 @@ class ReportConsumerImpl(ReportConsumer):
             )
             logger.info("요약 결과를 벡터 DB에 저장했습니다.")
 
-            # 댓글 정보 조회
-            comments_by_youtube = await youtubecommentservice.get_comments(video_id,report_id)
-            comments_obj = await comment_service.convert_to_comment_objects(comments_by_youtube)
-            result = await comment_service.gather_classified_comments(comments_obj)
-            summarized_comments = await comment_service.summarize_comments_by_emotions_with_llm(result)
-            await report_service.update_report_emotion_counts(report_id, summarized_comments)
-            comments_by_youtube = await self.youtubecommentservice.get_comments(youtube_video_id,report_id)
-            comments_obj = await self.commentservice.convert_to_comment_objects(comments_by_youtube)
-            result = await self.commentservice.gather_classified_comments(comments_obj)
-            summarized_comments = await self.commentservice.summarize_comments_by_emotions_with_llm(result)
-            await self.report_service.update_report_emotion_counts(report_id, summarized_comments)
-
             # 댓글 정보 조회 
             # 수치 정보 조회
 						
@@ -142,10 +167,9 @@ class ReportConsumerImpl(ReportConsumer):
             })
             
             # task 정보 업데이트
-
             
-            # 요약 결과만 출력
-            logger.info("요약 결과:\n%s", summary)            
+            
+
         except Exception as e:
             logger.error(f"handle_overview 처리 중 오류 발생: {e}")
         finally:
@@ -153,10 +177,9 @@ class ReportConsumerImpl(ReportConsumer):
             elapsed_time = end_time - start_time
             logger.info(f"handle_overview 전체 처리 시간: {elapsed_time:.3f}초")
 
+        
+
     async def handle_analysis(self, message: Dict[str, Any]):
-
-        start_time = time.time()  # 시작 시간 기록
-
         """보고서 분석 요청 처리"""
         report_id = message.get("report_id")
         if report_id is None:
@@ -226,7 +249,6 @@ class ReportConsumerImpl(ReportConsumer):
             # )
         except Exception as e:
             logger.error(f"handle_analysis 처리 중 오류 발생: {e}")
-
 
 
     async def handle_idea(self, message: Dict[str, Any]):
