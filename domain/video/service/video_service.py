@@ -10,6 +10,14 @@ content_chunk_repository = ContentChunkRepository()
 
 class VideoService:
 
+    # TODO 비디오 analytics 더미데이터 : 추후 외부 API 연동 시점 결정 후 수정
+    video_analytics_dummy = {
+        "duration": 300,  # 비디오 길이 (초 단위)
+        "share_count": 15,  # 공유 수
+        "average_view_duration": 200,  # 평균 시청 시간 (초 단위)
+        "subscribers_gained": 10,  # 구독자 증가 수
+    }
+
 
     """
     유사도 계산
@@ -47,7 +55,6 @@ class VideoService:
     SEO 분석 
     - 조회수 대비 시청지속시간, 좋아요, 공유, 구독자증가율을 기반으로 SEO 점수 계산
     """
-    # TODO : 파리미터 video 가 아니라 analytics 를 포함한 객체로 변경 필요
     async def analyze_seo(self, video: Video):
 
         views = video.view
@@ -56,8 +63,8 @@ class VideoService:
 
         # 1. 조회수 대비 참여율 계산
         likes_per_1000_views = (video.like_count or 0) / views * 1000
-        shares_per_1000_views = (video.share_count or 0) / views * 1000
-        subscribers_gained_per_1000_views = (video.subscribers_gained or 0) / views * 1000
+        shares_per_1000_views = (self.video_analytics_dummy["share_count"] or 0) / views * 1000 # TODO : API 연동
+        subscribers_gained_per_1000_views = (self.video_analytics_dummy["subscribers_gained"] or 0) / views * 1000 # TODO : API 연동
 
         # 2. 목표 수치 기준 정규화
         TARGETS = {
@@ -67,7 +74,7 @@ class VideoService:
         }
 
         normalized_scores = {
-            "duration": min((video.average_view_duration or 0) / video.duration, 1.0),
+            "duration": min((self.video_analytics_dummy["average_view_duration"] or 0) / self.video_analytics_dummy["duration"], 1.0), # TODO : API 연동
             "likes_rate": min(likes_per_1000_views / TARGETS["likes_per_1000_views"], 1.0),
             "shares_rate": min(shares_per_1000_views / TARGETS["shares_per_1000_views"], 1.0),
             "subscribers_rate": min(subscribers_gained_per_1000_views / TARGETS["subscribers_per_1000_views"], 1.0),
@@ -89,11 +96,7 @@ class VideoService:
             final_scores[f"{key}_score"] = round(score, 0)
             total_score += score
 
-        return {
-            "total_seo_score": round(total_score, 1),
-            "details": final_scores,
-            "source_metrics": video.dict()
-        }
+        return round(total_score, 1)
 
     """
     재방문률 분석 (좋아요 + 공유 + 구독) / (조회수)
@@ -103,5 +106,6 @@ class VideoService:
         if video.view == 0:
             return 0  # TODO 조회수가 0인 경우 처리
 
-        revisit = ((video.like_count or 0) + (video.share_count or 0) + (video.share_count or 0)) / video.view
+        # TODO : API 연동
+        revisit = ((video.like_count or 0) + (self.video_analytics_dummy["share_count"] or 0) + (self.video_analytics_dummy["subscribers_gained"] or 0)) / video.view
         return round(revisit * 100, 2)

@@ -15,6 +15,8 @@ from external.rag.rag_service import RagService
 from response.api_response import ApiResponse
 from response.code.status.success_status import SuccessStatus
 
+from domain.video.service.video_service import VideoService
+
 import logging
 
 
@@ -81,15 +83,3 @@ async def create_report(video_id: int):
 
     return ApiResponse.on_success(SuccessStatus._OK, {"task_id": task.id})
 
-
-@router.get("/test")
-async def test(video_id: int):
-    video_repository = VideoRepository()
-    video = await video_repository.find_by_id(video_id)
-
-    video_service = VideoService()
-    print(await video_service.analyze_consistency(video))
-    print(await video_service.analyze_seo(video))
-    print(await video_service.analyze_revisit(video))
-
-    return "ok"

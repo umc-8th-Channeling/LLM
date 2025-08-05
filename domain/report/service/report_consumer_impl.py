@@ -13,6 +13,7 @@ from domain.report.repository.report_repository import ReportRepository
 from domain.task.repository.task_repository import TaskRepository
 from domain.video.repository.video_repository import VideoRepository
 from external.rag.rag_service import RagService
+from domain.video.service.video_service import VideoService
 
 from core.enums.source_type import SourceTypeEnum
 from external.youtube.youtube_comment_service import YoutubeCommentService
@@ -94,7 +95,11 @@ class ReportConsumerImpl(ReportConsumer):
             await report_service.update_report_emotion_counts(report_id, summarized_comments)
 
             # 수치 정보 조회
-						
+            video_service = VideoService()
+            print(await video_service.analyze_consistency(video))
+            print(await video_service.analyze_seo(video))
+            print(await video_service.analyze_revisit(video))
+
             # 요약 정보 업데이트
             # ReportRepository.save({
             #       "id": report_id,  
