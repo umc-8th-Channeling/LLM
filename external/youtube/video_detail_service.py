@@ -12,9 +12,9 @@ class VideoDetailService:
     """YouTube Video Data API 서비스"""
     
     def __init__(self):
-        self.api_key = os.getenv('GOOGLE_API_KEY')
+        self.api_key = os.getenv('YOUTUBE_API_KEY')
         if not self.api_key:
-            logger.warning("GOOGLE_API_KEY not found in environment variables")
+            logger.warning("YOUTUBE_API_KEY not found in environment variables")
         self.youtube = build('youtube', 'v3', developerKey=self.api_key)
     
     def get_video_details(self, video_id: str) -> Dict:
