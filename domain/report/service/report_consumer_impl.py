@@ -96,17 +96,31 @@ class ReportConsumerImpl(ReportConsumer):
 
             # 수치 정보 조회
             video_service = VideoService()
-            print(await video_service.analyze_consistency(video))
-            print(await video_service.analyze_seo(video))
-            print(await video_service.analyze_revisit(video))
+            concept = await video_service.analyze_consistency(video)
+            seo = await video_service.analyze_seo(video)
+            revisit = await video_service.analyze_revisit(video)
+            print(f"일관성 : {concept}")
+            print(f"seo : {seo}")
+            print(f"재방문률 : {revisit}")
+            print(f"조회수 : {video.view}")
+            print(f"좋아요 : {video.like_count}")
+            print(f"댓글 : {video.comment_count}")
 
             # 요약 정보 업데이트
-            # ReportRepository.save({
-            #       "id": report_id,  
-            #       "summary": summary
-                   
+            # report_repository.save({
+            #     "id": report_id,
+            #     # 영상 평가
+            #     "like_count": video.like_count,
+            #     "comment" : video.comment_count,
+            #     "view" : video.view,
+            #     "concept" : concept,
+            #     "seo" : seo,
+            #     "revisit" : revisit,
+            #     # 영상 요약
+            #     "summary": summary,
+            #     # 댓글 반응
             # })
-            
+
             # task 정보 업데이트
 
         except Exception as e:
