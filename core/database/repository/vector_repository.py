@@ -258,30 +258,30 @@ class VectorRepository(Generic[T], ABC):
                 LIMIT :limit
             """)
 
-        result = await session.execute(
-            search_query,
-            {
-                "query_embedding": query_embedding,
-                "source_type": source_type,
-                "source_id": source_id,
-                "limit": limit,
-                **meta_params
-            }
-        )
-        rows = result.fetchall()  # 또는 fetchall()이 async면 await 붙이기
-        return [
-            {
-                "id": row.id,
-                "source_type": row.source_type,
-                "source_id": row.source_id,
-                "content": row.content,
-                "chunk_index": row.chunk_index,
-                "meta": row.meta,
-                "created_at": row.created_at.isoformat(),
-                "similarity": row.similarity,
-            }
-            for row in rows
-        ]
+            result = await session.execute(
+                search_query,
+                {
+                    "query_embedding": query_embedding,
+                    "source_type": source_type,
+                    "source_id": source_id,
+                    "limit": limit,
+                    **meta_params
+                }
+            )
+            rows = result.fetchall()  # 또는 fetchall()이 async면 await 붙이기
+            return [
+                {
+                    "id": row.id,
+                    "source_type": row.source_type,
+                    "source_id": row.source_id,
+                    "content": row.content,
+                    "chunk_index": row.chunk_index,
+                    "meta": row.meta,
+                    "created_at": row.created_at.isoformat(),
+                    "similarity": row.similarity,
+                }
+                for row in rows
+            ]
 
         
 
