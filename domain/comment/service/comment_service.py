@@ -1,12 +1,13 @@
 import random
 from collections import defaultdict
 from typing import List, DefaultDict
-
+import logging
 from domain.comment.model.comment import Comment
 from domain.comment.model.comment_type import CommentType
 from domain.comment.repository.comment_repository import CommentRepository
 from external.rag.rag_service import RagService
 
+logger = logging.getLogger(__name__)
 
 class CommentService:
     def __init__(self):
@@ -38,7 +39,7 @@ class CommentService:
                 )
                 summarized_comments[emotion].append(summarized_comment_obj)
             await self.comment_repository.save_bulk(summarized_comments[emotion])
-
+            logger.info("댓글 결과를 MYSQL DB에 저장했습니다.")
         return summarized_comments
 
     async def classify_comment_with_llm(self, comment: Comment) -> Comment:
