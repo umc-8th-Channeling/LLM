@@ -15,6 +15,9 @@ from domain.video.repository.video_repository import VideoRepository
 from external.rag.rag_service import RagService
 from domain.video.service.video_service import VideoService
 
+from external.rag import leave_analyize
+import logging
+import time
 from core.enums.source_type import SourceTypeEnum
 from external.youtube.youtube_comment_service import YoutubeCommentService
 
@@ -66,10 +69,9 @@ class ReportConsumerImpl(ReportConsumer):
                     logger.warning(f"video_id={video_id}에 해당하는 비디오가 없습니다.")
             else:
                 logger.warning("report에 video_id가 없습니다.")
+
                 
-            """
-            여기 부터 rag 시작
-            """
+            # 여기 부터 rag 시작
             # 유튜브 영상 아이디 조회
             youtube_video_id = getattr(video, "youtube_video_id", None)
             
@@ -93,7 +95,13 @@ class ReportConsumerImpl(ReportConsumer):
             result = await comment_service.gather_classified_comments(comments_obj)
             summarized_comments = await comment_service.summarize_comments_by_emotions_with_llm(result)
             await report_service.update_report_emotion_counts(report_id, summarized_comments)
+            comments_by_youtube = await self.youtubecommentservice.get_comments(youtube_video_id,report_id)
+            comments_obj = await self.commentservice.convert_to_comment_objects(comments_by_youtube)
+            result = await self.commentservice.gather_classified_comments(comments_obj)
+            summarized_comments = await self.commentservice.summarize_comments_by_emotions_with_llm(result)
+            await self.report_service.update_report_emotion_counts(report_id, summarized_comments)
 
+            # 댓글 정보 조회 
             # 수치 정보 조회
             video_service = VideoService()
             concept = await video_service.analyze_consistency(video)
@@ -123,6 +131,9 @@ class ReportConsumerImpl(ReportConsumer):
 
             # task 정보 업데이트
 
+            
+            # 요약 결과만 출력
+            logger.info("요약 결과:\n%s", summary)            
         except Exception as e:
             logger.error(f"handle_overview 처리 중 오류 발생: {e}")
         finally:
@@ -131,9 +142,51 @@ class ReportConsumerImpl(ReportConsumer):
             logger.info(f"handle_overview 전체 처리 시간: {elapsed_time:.3f}초")
 
     async def handle_analysis(self, message: Dict[str, Any]):
+
+        start_time = time.time()  # 시작 시간 기록
+
         """보고서 분석 요청 처리"""
+        report_id = message.get("report_id")
+        if report_id is None:
+            logger.error("report_id가 메시지에 없습니다")
+            return
+
+        report = await self.report_repository.find_by_id(report_id)
+        if not report:
+            logger.warning(f"report_id={report_id}에 해당하는 보고서가 없습니다.")
+            return
+
+        # Report 정보 로그 출력
+        logger.info(f"보고서 정보: {report}")
+
+        # 연관된 Video 정보 로그 출력 (예: report.video)
+        video_id = getattr(report, "video_id", None)
+        print("videoID : ", video_id)
+        if video_id:
+            video = await self.video_repository.find_by_id(video_id)
+            if video:
+                logger.info(f"연관된 비디오 정보: {video}")
+            else:
+                logger.warning(f"video_id={video_id}에 해당하는 비디오가 없습니다.")
+        else:
+            logger.warning("report에 video_id가 없습니다.")
+
+        result = await leave_analyize.analyze_leave(video)
+
+        print("시청자 이탈 분석 : ", result)
+
         logger.info(f"Handling analysis request")
+
+        
+        end_time = time.time()  # 종료 시간 기록
+        elapsed_time = end_time - start_time
+        logger.info(f"시청자 이탈 분석 전체 처리 시간: {elapsed_time:.3f}초")
         # TODO: 보고서 분석 처리 로직 구현
+
+
+
+
+
 
     async def handle_idea(self, message: Dict[str, Any]):
         """보고서 아이디어 요청 처리"""
