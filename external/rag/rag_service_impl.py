@@ -34,11 +34,11 @@ class RagServiceImpl(RagService):
         print()
         
         query = "유튜브 영상 자막을 기반으로 10초 단위 개요를 위의 형식에 따라 작성해주세요."
-        return self._execute_llm_chain(context, query, PromptTemplateManager.get_video_summary_prompt())
+        return self.execute_llm_chain(context, query, PromptTemplateManager.get_video_summary_prompt())
     
     def classify_comment(self, comment: str) -> Dict[str, Any]:
         query = "유튜브 댓글을 분석하여 감정을 분류하고 백틱(```)이나 설명 없이 순수 JSON으로 출력해주세요."
-        result = self._execute_llm_chain(comment, query, PromptTemplateManager.get_comment_reaction_prompt())
+        result = self.execute_llm_chain(comment, query, PromptTemplateManager.get_comment_reaction_prompt())
         print("LLM 응답 = ", result)
 
         result_json = json.loads(result)
@@ -52,7 +52,7 @@ class RagServiceImpl(RagService):
             "백틱(```)이나 설명 없이 순수 JSON으로 출력해주세요."
         )
 
-        result = self._execute_llm_chain(
+        result = self.execute_llm_chain(
             comments, query, PromptTemplateManager.get_sumarlize_comment_prompt()
         )
         print("LLM 응답 = ", result)
@@ -179,9 +179,9 @@ class RagServiceImpl(RagService):
         # 프롬프트 템플릿 가져오기
         prompt_template = PromptTemplateManager.get_algorithm_optimization_prompt()
         
-        return self._execute_llm_chain(context, query, prompt_template)
+        return self.execute_llm_chain(context, query, prompt_template)
 
-    def _execute_llm_chain(self, context: str, query: str, prompt_template_str: str) -> str:
+    def execute_llm_chain(self, context: str, query: str, prompt_template_str: str) -> str:
         """
         LLM 체인을 실행하는 공통 메서드
         :param context: LLM에 제공할 정보(youtube api를 통해 가져온 자막 등)
@@ -204,3 +204,15 @@ class RagServiceImpl(RagService):
         combine_chain = create_stuff_documents_chain(self.llm, chat_prompt)
         result = combine_chain.invoke({"input": query, "context": documents})
         return result
+    
+    def execute_llm_direct(self, prompt: str) -> str:
+        """
+        이미 완성된 프롬프트 문자열을 바로 LLM에 넣어 실행하는 함수
+
+        :param prompt: 완성된 프롬프트 문자열
+        :return: LLM의 응답
+        """
+        # self.llm이 직접 프롬프트 문자열을 받아 실행하는 함수라고 가정
+        result = self.llm.invoke(prompt)
+        return result.content
+        

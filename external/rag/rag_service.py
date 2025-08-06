@@ -31,3 +31,13 @@ class RagService(ABC):
     def analyze_algorithm_optimization(self, video_id: str) -> str:
         """알고리즘 최적화 분석"""
         pass
+
+    @abstractmethod
+    def execute_llm_chain(self, context: str, query: str, prompt_template: str) -> str:
+        """LLM 체인 실행"""
+        pass
+
+    @abstractmethod
+    def execute_llm_direct(self, prompt: str) -> str:
+        """LLM 직접 실행"""
+        pass
