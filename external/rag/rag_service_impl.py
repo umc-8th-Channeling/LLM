@@ -137,12 +137,6 @@ class RagServiceImpl(RagService):
         if channel_id:
             channel_stats = self.video_detail_service.get_channel_stats(channel_id)
         
-        # 카테고리 벤치마크 조회
-        category_benchmarks = {}
-        category_id = video_details.get('categoryId')
-        if category_id:
-            category_benchmarks = self.video_detail_service.get_category_benchmarks(category_id)
-        
         # 분석에 필요한 데이터 구조화
         optimization_data = {
             "video": {
@@ -161,13 +155,6 @@ class RagServiceImpl(RagService):
                 "subscriberCount": channel_stats.get('subscriberCount', 0),
                 "totalViewCount": channel_stats.get('viewCount', 0),
                 "totalVideoCount": channel_stats.get('videoCount', 0)
-            },
-            "categoryBenchmarks": {
-                "avgViewCount": category_benchmarks.get('avgViewCount', 0),
-                "avgLikeCount": category_benchmarks.get('avgLikeCount', 0),
-                "avgCommentCount": category_benchmarks.get('avgCommentCount', 0),
-                "medianViewCount": category_benchmarks.get('medianViewCount', 0),
-                "sampleSize": category_benchmarks.get('sampleSize', 0)
             }
         }
         
