@@ -15,6 +15,7 @@ from domain.report.repository.report_repository import ReportRepository
 from domain.task.repository.task_repository import TaskRepository
 from domain.video.repository.video_repository import VideoRepository
 from external.rag.rag_service_impl import RagServiceImpl
+from domain.video.service.video_service import VideoService
 from external.rag import leave_analyize
 from core.enums.source_type import SourceTypeEnum
 from external.youtube.youtube_comment_service import YoutubeCommentService
@@ -92,6 +93,19 @@ class ReportConsumerImpl(ReportConsumer):
             report_id = report.id
             video_id = video.id    
 
+            # Report 정보 로그 출력
+            logger.info(f"보고서 정보: {report}")
+
+            # 연관된 Video 정보 로그 출력 (예: report.video)
+            video_id = getattr(report, "video_id", None)
+            if video_id:
+                video = await video_repository.find_by_id(video_id)
+                if video:
+                    logger.info(f"연관된 비디오 정보: {video}")
+                else:
+                    logger.warning(f"video_id={video_id}에 해당하는 비디오가 없습니다.")
+            else:
+                logger.warning("report에 video_id가 없습니다.")
             # 여기 부터 rag 시작
             # 유튜브 영상 아이디 조회
             youtube_video_id = getattr(video, "youtube_video_id", None)
@@ -127,9 +141,32 @@ class ReportConsumerImpl(ReportConsumer):
             await self.report_service.update_report_emotion_counts(report_id, summarized_comments)
 
             # 수치 정보 조회
-						
-            
-            
+            video_service = VideoService()
+            concept = await video_service.analyze_consistency(video)
+            seo = await video_service.analyze_seo(video)
+            revisit = await video_service.analyze_revisit(video)
+            print(f"일관성 : {concept}")
+            print(f"seo : {seo}")
+            print(f"재방문률 : {revisit}")
+            print(f"조회수 : {video.view}")
+            print(f"좋아요 : {video.like_count}")
+            print(f"댓글 : {video.comment_count}")
+
+            # 요약 정보 업데이트
+            # report_repository.save({
+            #     "id": report_id,
+            #     # 영상 평가
+            #     "like_count": video.like_count,
+            #     "comment" : video.comment_count,
+            #     "view" : video.view,
+            #     "concept" : concept,
+            #     "seo" : seo,
+            #     "revisit" : revisit,
+            #     # 영상 요약
+            #     "summary": summary,
+            #     # 댓글 반응
+            # })
+
             # task 정보 업데이트
             task = await self.task_repository.find_by_id(message["task_id"])
             if task:
