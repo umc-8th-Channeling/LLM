@@ -5,13 +5,13 @@ import logging
 from domain.comment.model.comment import Comment
 from domain.comment.model.comment_type import CommentType
 from domain.comment.repository.comment_repository import CommentRepository
-from external.rag.rag_service import RagService
+from external.rag.rag_service_impl import RagServiceImpl
 
 logger = logging.getLogger(__name__)
 
 class CommentService:
     def __init__(self):
-        self.rag_service = RagService()
+        self.rag_service = RagServiceImpl()
         self.comment_repository = CommentRepository()
 
     async def summarize_comments_by_emotions_with_llm(self, comments_by_emotions: DefaultDict[CommentType, list[Comment]]) -> defaultdict[CommentType, List[Comment]]:
@@ -31,6 +31,7 @@ class CommentService:
 
 
             # 요약 내용을 defaultdict에 추가 & DB 저장
+            comments_to_save = []
             for content in summarized_contents:
                 summarized_comment_obj = Comment(
                     comment_type=emotion,
@@ -38,7 +39,13 @@ class CommentService:
                     report_id=comments[0].report_id
                 )
                 summarized_comments[emotion].append(summarized_comment_obj)
-            await self.comment_repository.save_bulk(summarized_comments[emotion])
+                # 딕셔너리로 변환하여 저장
+                comments_to_save.append({
+                    "comment_type": emotion,
+                    "content": content,
+                    "report_id": comments[0].report_id
+                })
+            await self.comment_repository.save_bulk(comments_to_save)
             logger.info("댓글 결과를 MYSQL DB에 저장했습니다.")
         return summarized_comments
 

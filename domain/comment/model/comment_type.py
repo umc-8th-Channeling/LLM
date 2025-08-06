@@ -2,7 +2,7 @@ from enum import Enum
 
 
 class CommentType(str, Enum):
-    ADVICE_OPINION = 'advice_opinion'
+    ADVICE = 'advice'
     NEGATIVE = 'negative'
     NEUTRAL = 'neutral'
     POSITIVE = 'positive'
@@ -13,6 +13,6 @@ class CommentType(str, Enum):
             1: CommentType.POSITIVE,
             2: CommentType.NEGATIVE,
             3: CommentType.NEUTRAL,
-            4: CommentType.ADVICE_OPINION
+            4: CommentType.ADVICE
         }
         return mapping.get(code, CommentType.NEUTRAL)  # 기본값 NEUTRAL

@@ -10,9 +10,10 @@ class ReportRepository(CRUDRepository[Report]):
         report = await self.find_by_id(report_id)
         if not report:
             return False
+        update_data = {"id": report_id}
         for comment_type, count in count_dict.items():
-            setattr(report, f"{comment_type.value}_comment", count)
-        await self.save(report.dict())
+            update_data[f"{comment_type.value}_comment"] = count
+        await self.save(update_data)
         return True
     
 
