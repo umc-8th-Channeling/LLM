@@ -2,10 +2,10 @@ from enum import Enum
 
 
 class CommentType(str, Enum):
-    ADVICE = 'advice'
-    NEGATIVE = 'negative'
-    NEUTRAL = 'neutral'
-    POSITIVE = 'positive'
+    ADVICE = 'ADVICE_OPINION'
+    NEGATIVE = 'NEGATIVE'
+    NEUTRAL = 'NEUTRAL'
+    POSITIVE = 'POSITIVE'
 
     @staticmethod
     def from_emotion_code(code: int) -> "CommentType":
