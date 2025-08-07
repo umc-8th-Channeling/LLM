@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Dict, TypeVar, Generic, Any, Optional, List
 import os
+from sqlalchemy.sql import text
 from openai import AsyncOpenAI
 from dotenv import load_dotenv
 from core.config.database_config import PGSessionLocal
@@ -111,8 +112,6 @@ class VectorRepository(Generic[T], ABC):
         returns:
             List[Dict[str, Any]] - 유사도 순으로 정렬된 청크 목록
         """
-        
-        
         async with PGSessionLocal() as session:
             # 1. template_key로 question_template의 임베딩 가져오기
             template_query = text("""
@@ -147,6 +146,7 @@ class VectorRepository(Generic[T], ABC):
                     1 - (c.embedding <=> :template_embedding) as similarity
                 FROM content_chunks c
                 WHERE c.source_type = :source_type
+                                
                 ORDER BY c.embedding <=> :template_embedding
                 LIMIT :limit
             """)
@@ -174,5 +174,161 @@ class VectorRepository(Generic[T], ABC):
                 })
             
             return chunks
+
+    # 특정 유사도 조회
+    async def search_similar_test(self, source_type: SourceTypeEnum, metadata: Dict[str, Any] = None, limit: int = 10) -> List[
+        Dict[str, Any]]:
+
+        async with PGSessionLocal() as session:
+
+            template_embedding = metadata.get("query_embedding")
+
+            # 2. 해당 source_type의 content_chunks 중 가장 유사한 것들 검색
+            search_query = text("""
+                                SELECT c.id,
+                                       c.source_type,
+                                       c.source_id,
+                                       c.content,
+                                       c.chunk_index,
+                                       c.meta,
+                                       c.created_at,
+                                       1 - (c.embedding <=> :template_embedding) as similarity
+                                FROM content_chunk c
+                                WHERE c.source_type = :source_type
+                                ORDER BY c.embedding <=> :template_embedding
+                LIMIT :limit
+                                """)
+
+            result = await session.execute(
+                search_query,
+                {
+                    "template_embedding": template_embedding,
+                    "source_type": source_type.name,
+                    "limit": limit
+                }
+            )
+
+            chunks = []
+            for row in result:
+                chunks.append({
+                    "id": row.id,
+                    "source_type": row.source_type,
+                    "source_id": row.source_id,
+                    "content": row.content,
+                    "chunk_index": row.chunk_index,
+                    "meta": row.meta,
+                    "created_at": row.created_at,
+                    "similarity": row.similarity
+                })
+
+            return chunks
+
     
+    async def search_similar_K(self,query :str, source_type: str, source_id : str,metadata: Dict[str, Any] = None, limit: int = 10) -> List[Dict[str, Any]]:
+        query_embedding = await self.generate_embedding(query)  # OpenAI or other model로 임베딩
+        query_embedding = str(query_embedding)
+        async with PGSessionLocal() as session:
+            # 메타 조건 SQL 동적 생성
+            meta_filter_sql = ""
+            meta_params = {}
+            if metadata:
+                for i, (k, v) in enumerate(metadata.items()):
+                    meta_filter_sql += f" AND c.meta ->> :meta_key_{i} = :meta_val_{i}"
+                    meta_params[f"meta_key_{i}"] = k
+                    meta_params[f"meta_val_{i}"] = v
+
+            # 유사한 청크 검색
+            search_query = text(f"""
+                SELECT 
+                    c.id,
+                    c.source_type,
+                    c.source_id,
+                    c.content,
+                    c.chunk_index,
+                    c.meta,
+                    c.created_at,
+                    1 - (c.embedding <=> :query_embedding) AS similarity
+                FROM content_chunk c
+                WHERE c.source_type = :source_type
+                AND c.source_id = :source_id
+                {meta_filter_sql}
+                ORDER BY c.embedding <=> :query_embedding
+                LIMIT :limit
+            """)
+
+            result = await session.execute(
+                search_query,
+                {
+                    "query_embedding": query_embedding,
+                    "source_type": source_type,
+                    "source_id": source_id,
+                    "limit": limit,
+                    **meta_params
+                }
+            )
+            rows = result.fetchall()  # 또는 fetchall()이 async면 await 붙이기
+            return [
+                {
+                    "id": row.id,
+                    "source_type": row.source_type,
+                    "source_id": row.source_id,
+                    "content": row.content,
+                    "chunk_index": row.chunk_index,
+                    "meta": row.meta,
+                    "created_at": row.created_at.isoformat(),
+                    "similarity": row.similarity,
+                }
+                for row in rows
+            ]
+
+        
+
+    # 특정 유사도 조회
+    async def search_similar_test(self, source_type: SourceTypeEnum, metadata: Dict[str, Any] = None, limit: int = 10) -> List[
+        Dict[str, Any]]:
+
+        async with PGSessionLocal() as session:
+
+            template_embedding = metadata.get("query_embedding")
+
+            # 2. 해당 source_type의 content_chunks 중 가장 유사한 것들 검색
+            search_query = text("""
+                                SELECT c.id,
+                                       c.source_type,
+                                       c.source_id,
+                                       c.content,
+                                       c.chunk_index,
+                                       c.meta,
+                                       c.created_at,
+                                       1 - (c.embedding <=> :template_embedding) as similarity
+                                FROM content_chunk c
+                                WHERE c.source_type = :source_type
+                                ORDER BY c.embedding <=> :template_embedding
+                LIMIT :limit
+                                """)
+
+            result = await session.execute(
+                search_query,
+                {
+                    "template_embedding": template_embedding,
+                    "source_type": source_type.name,
+                    "limit": limit
+                }
+            )
+
+            chunks = []
+            for row in result:
+                chunks.append({
+                    "id": row.id,
+                    "source_type": row.source_type,
+                    "source_id": row.source_id,
+                    "content": row.content,
+                    "chunk_index": row.chunk_index,
+                    "meta": row.meta,
+                    "created_at": row.created_at,
+                    "similarity": row.similarity
+                })
+
+            return chunks
+
     

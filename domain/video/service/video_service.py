@@ -1,67 +1,69 @@
-from domain.channel.model.channel import Channel
+import numpy as np
+
+from domain.content_chunk.repository.content_chunk_repository import ContentChunkRepository
 from domain.video.model.video import Video
 from domain.video.repository.video_repository import VideoRepository
 
 video_repository = VideoRepository()
-
-
+content_chunk_repository = ContentChunkRepository()
 
 class VideoService:
-    async def get_video(self, video_id: int):
-        # 영상 analytics 정보 조회
-        video = await video_repository.find_by_id(video_id)
-        if not video:
-            return Exception("해당 영상이 존재하지 않습니다.")
 
-        return video
+    # TODO 비디오 analytics 더미데이터 : 추후 외부 API 연동 시점 결정 후 수정
+    video_analytics_dummy = {
+        "duration": 300,  # 비디오 길이 (초 단위)
+        "share_count": 15,  # 공유 수
+        "average_view_duration": 200,  # 평균 시청 시간 (초 단위)
+        "subscribers_gained": 10,  # 구독자 증가 수
+    }
 
-    # """
-    # 백터 DB 내 영상 업데이트
-    # """
-    # async def update_pg_video(self, channel_id: int):
-    #     # 1. 벡터 DB(PostgreSQL)에서 채널의 기존 영상 벡터 조회
-    #     existing_embeddings = await self.pg_vector_repo.find_embeddings_by_channel_id(channel_id)
-    #
-    #     # 1-1. 벡터가 존재하지 않으면, MySQL에서 데이터를 가져와 벡터화 후 저장
-    #     if not existing_embeddings:
-    #         # MySQL에서 비디오 원본 데이터 조회
-    #         videos_from_mysql = await self.mysql_video_repo.find_by_channel_id(channel_id)
-    #         if not videos_from_mysql:
-    #             print("분석할 영상이 없습니다.") # 또는 예외 처리
-    #
-    #         # 텍스트 데이터 준비 및 벡터화
-    #         texts = [f"{v.title} {v.description} {v.video_category}" for v in videos_from_mysql]
-    #         new_embeddings = self.model.encode(texts)
-    #
-    #         # 생성된 벡터를 PostgreSQL에 저장
-    #         await self.pg_vector_repo.save_embeddings(channel_id, videos_from_mysql, new_embeddings)
-    #     else:
-    #         texts = existing_embeddings
-    #
-    #     return texts
 
     """
     유사도 계산
+    - 채널 내 다른 영상들과의 유사도를 계산하여 일관성 점수 반환
     """
-    # async def analyze_consistency(self, channel_id: int, curr_video, report):
-    # # 1. 벡터 DB에서 채널 모든 영상 조회
-    # existing_embeddings = await self.update_pg_video(channel_id)
-    #
-    # # 2. 현재 대상 비디오와 기존 비디오들 간의 유사도 수치화
-    # curr_video_text = f"{curr_video.title} {curr_video.description} {curr_video.video_category}"
-    # curr_video_embedding = self.model.encode([curr_video_text])
-    #
-    # # 코사인 유사도 계산
-    # similarities = cosine_similarity(curr_video_embedding, np.array(existing_embeddings))
-    # consistency_score = np.mean(similarities[0]) * 100 # 백분율로 변환
-    # print(f"계산된 유사도 점수: {consistency_score:.2f}%")
-    #
-    # # report 테이블에 수치화한 유사도 저장
-    # report.concept = consistency_score
-    # return report
+    async def analyze_consistency(self, video: Video):
+        # 채널 내 모든 영상 조회 (영상이 없다면 유사도 100으로 처리)
+        videos = await video_repository.find_by_channel_id(video.channel_id)
+        other_videos = [v for v in videos if v.id != video.id]
+
+        if (other_videos is None) or (len(other_videos) == 0):
+            return 100
+
+        # 1. 대상 비디오의 임베딩
+        target_video_text = f"{video.title} {video.description}"
+        target_embedding = await content_chunk_repository.generate_embedding(target_video_text)
+
+        # 2. 다른 영상들의 임베딩
+        other_videos_texts = [f"{v.title} {v.description}" for v in other_videos]
+        other_embeddings = []
+        for text in other_videos_texts:
+            embedding = await content_chunk_repository.generate_embedding(text)
+            other_embeddings.append(embedding)
+
+        # 3. 코사인 유사도 계산 (NumPy 사용)
+        similarity_scores = []
+        for other_embedding in other_embeddings:
+            # 코사인 유사도 = (A·B) / (||A|| * ||B||)
+            dot_product = np.dot(target_embedding, other_embedding)
+            norm_target = np.linalg.norm(target_embedding)
+            norm_other = np.linalg.norm(other_embedding)
+            
+            if norm_target == 0 or norm_other == 0:
+                similarity = 0
+            else:
+                similarity = dot_product / (norm_target * norm_other)
+            similarity_scores.append(similarity)
+
+        # 4. 평균 유사도 점수 계산
+        average_similarity = np.mean(similarity_scores)
+        consistency_score = average_similarity * 100
+        return round(consistency_score, 0)
+
 
     """
-    SEO 분석
+    SEO 분석 
+    - 조회수 대비 시청지속시간, 좋아요, 공유, 구독자증가율을 기반으로 SEO 점수 계산
     """
     async def analyze_seo(self, video: Video):
 
@@ -71,18 +73,18 @@ class VideoService:
 
         # 1. 조회수 대비 참여율 계산
         likes_per_1000_views = (video.like_count or 0) / views * 1000
-        shares_per_1000_views = (video.share_count or 0) / views * 1000
-        subscribers_gained_per_1000_views = (video.subscribers_gained or 0) / views * 1000
+        shares_per_1000_views = (self.video_analytics_dummy["share_count"] or 0) / views * 1000 # TODO : API 연동
+        subscribers_gained_per_1000_views = (self.video_analytics_dummy["subscribers_gained"] or 0) / views * 1000 # TODO : API 연동
 
         # 2. 목표 수치 기준 정규화
         TARGETS = {
             "likes_per_1000_views": 30,  # 1000회 조회당 좋아요 30개 목표
             "shares_per_1000_views": 5,  # 1000회 조회당 공유 5개 목표
-            "subscribers_per_1000_views": 10,  # 1000회 조회당 구독자 10명 목표
+            "subscribers_per_1000_views": 5,  # 1000회 조회당 구독자 5명 목표
         }
 
         normalized_scores = {
-            "duration": min((video.average_view_duration or 0) / video.duration, 1.0),
+            "duration": min((self.video_analytics_dummy["average_view_duration"] or 0) / self.video_analytics_dummy["duration"], 1.0), # TODO : API 연동
             "likes_rate": min(likes_per_1000_views / TARGETS["likes_per_1000_views"], 1.0),
             "shares_rate": min(shares_per_1000_views / TARGETS["shares_per_1000_views"], 1.0),
             "subscribers_rate": min(subscribers_gained_per_1000_views / TARGETS["subscribers_per_1000_views"], 1.0),
@@ -104,20 +106,16 @@ class VideoService:
             final_scores[f"{key}_score"] = round(score, 0)
             total_score += score
 
-        return {
-            "total_seo_score": round(total_score, 1),
-            "details": final_scores,
-            "source_metrics": video.dict()
-        }
+        return round(total_score, 1)
 
     """
-    재방문률 분석
+    재방문률 분석 (좋아요 + 공유 + 구독) / (조회수)
     """
-
     async def analyze_revisit(self, video: Video):
         # 조회수 대비 (좋아요 + 공유 + 구독)
         if video.view == 0:
             return 0  # TODO 조회수가 0인 경우 처리
 
-        revisit = ((video.like_count or 0) + (video.share_count or 0) + (video.share_count or 0)) / video.view
+        # TODO : API 연동
+        revisit = ((video.like_count or 0) + (self.video_analytics_dummy["share_count"] or 0) + (self.video_analytics_dummy["subscribers_gained"] or 0)) / video.view
         return round(revisit * 100, 2)

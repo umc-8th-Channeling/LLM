@@ -1,6 +1,8 @@
 
 from fastapi import APIRouter
 from core.config.kafka_config import KafkaConfig
+from domain.channel.repository.channel_repository import ChannelRepository
+from domain.idea.repository.idea_repository import IdeaRepository
 from domain.task.model.task import Status
 from core.kafka.message import Message
 from core.kafka.message import Step
@@ -8,8 +10,15 @@ from domain.report.repository.report_repository import ReportRepository
 from domain.task.repository.task_repository import TaskRepository
 from domain.report.service.report_producer import ReportProducer
 from core.kafka.kafka_broker import kafka_broker
+from domain.video.repository.video_repository import VideoRepository
+from external.rag.rag_service import RagService
+from external.rag.rag_service_impl import RagServiceImpl
 from response.api_response import ApiResponse
 from response.code.status.success_status import SuccessStatus
+
+from domain.video.service.video_service import VideoService
+
+import logging
 
 
 router = APIRouter(prefix="/reports", tags=["reports"])
@@ -18,6 +27,12 @@ report_repository = ReportRepository()
 task_repository = TaskRepository()
 kafka_config = KafkaConfig()
 report_producer = ReportProducer(kafka_broker, kafka_config)
+
+rag_service = RagServiceImpl()
+logger = logging.getLogger(__name__)
+video_repository = VideoRepository()
+channel_repository = ChannelRepository()
+idea_repository = IdeaRepository()
 
 @router.post("")
 async def create_report(video_id: int):
@@ -68,3 +83,4 @@ async def create_report(video_id: int):
     await report_producer.send_message("idea-topic", idea_message)
 
     return ApiResponse.on_success(SuccessStatus._OK, {"task_id": task.id})
+
