@@ -118,7 +118,8 @@ class ReportConsumerImpl(ReportConsumer):
             # 요약 정보 업데이트
             await self.report_repository.save({
                 "id": report_id,
-                "summary": summary
+                "summary": summary,
+                "title": video.title
             })
             logger.info("요약 결과를 MYSQL DB에 저장했습니다.")
 
