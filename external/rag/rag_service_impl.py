@@ -130,46 +130,52 @@ class RagServiceImpl(RagService):
         Returns:
             알고리즘 최적화 분석 결과
         """
-        # 영상 상세 정보 조회
-        video_details = self.video_detail_service.get_video_details(video_id)
-        
-        # 채널 정보 조회
-        channel_id = video_details.get('channelId')
-        
-        channel_stats = {}
-        if channel_id:
-            channel_stats = self.video_detail_service.get_channel_stats(channel_id)
-        
-        # 분석에 필요한 데이터 구조화
-        optimization_data = {
-            "video": {
-                "title": video_details.get('title', ''),
-                "description": video_details.get('description', ''),
-                "tags": video_details.get('tags', []),
-                "publishedAt": video_details.get('publishedAt', ''),
-                "duration": video_details.get('duration', ''),
-                "viewCount": video_details.get('viewCount', 0),
-                "likeCount": video_details.get('likeCount', 0),
-                "commentCount": video_details.get('commentCount', 0),
-                "thumbnails": video_details.get('thumbnails', {})
-            },
-            "channel": {
-                "name": video_details.get('channelTitle', ''),
-                "subscriberCount": channel_stats.get('subscriberCount', 0),
-                "totalViewCount": channel_stats.get('viewCount', 0),
-                "totalVideoCount": channel_stats.get('videoCount', 0)
+        try:
+            # 영상 상세 정보 조회
+            video_details = self.video_detail_service.get_video_details(video_id)
+            
+            # 채널 정보 조회
+            channel_id = video_details.get('channelId')
+            
+            channel_stats = {}
+            if channel_id:
+                channel_stats = self.video_detail_service.get_channel_stats(channel_id)
+            
+            # 분석에 필요한 데이터 구조화
+            optimization_data = {
+                "video": {
+                    "title": video_details.get('title', ''),
+                    "description": video_details.get('description', ''),
+                    "tags": video_details.get('tags', []),
+                    "publishedAt": video_details.get('publishedAt', ''),
+                    "duration": video_details.get('duration', ''),
+                    "viewCount": video_details.get('viewCount', 0),
+                    "likeCount": video_details.get('likeCount', 0),
+                    "commentCount": video_details.get('commentCount', 0),
+                    "thumbnails": video_details.get('thumbnails', {})
+                },
+                "channel": {
+                    "name": video_details.get('channelTitle', ''),
+                    "subscriberCount": channel_stats.get('subscriberCount', 0),
+                    "totalViewCount": channel_stats.get('viewCount', 0),
+                    "totalVideoCount": channel_stats.get('videoCount', 0)
+                }
             }
-        }
+            
+            # JSON 형식으로 context 생성
+            context = json.dumps(optimization_data, ensure_ascii=False, indent=2)
+            
+            query = "이 유튜브 영상의 알고리즘 최적화 상태를 분석하고 구체적인 개선 방안을 제시해주세요."
+            
+            # 프롬프트 템플릿 가져오기
+            prompt_template = PromptTemplateManager.get_algorithm_optimization_prompt()
+            
+            return self.execute_llm_chain(context, query, prompt_template)
         
-        # JSON 형식으로 context 생성
-        context = json.dumps(optimization_data, ensure_ascii=False, indent=2)
-        
-        query = "이 유튜브 영상의 알고리즘 최적화 상태를 분석하고 구체적인 개선 방안을 제시해주세요."
-        
-        # 프롬프트 템플릿 가져오기
-        prompt_template = PromptTemplateManager.get_algorithm_optimization_prompt()
-        
-        return self.execute_llm_chain(context, query, prompt_template)
+        except Exception as e:
+            logger.error(f"알고리즘 최적화 분석 중 오류 발생: {e}")
+            raise e
+            
 
     def analyze_realtime_trends(self, limit: int = 6, geo: str = "KR") -> Dict:
         """
