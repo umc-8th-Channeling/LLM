@@ -20,6 +20,8 @@ from external.rag import leave_analyize
 from core.enums.source_type import SourceTypeEnum
 from external.youtube.youtube_comment_service import YoutubeCommentService
 from domain.task.model.task import Status
+from domain.trend_keyword.repository.trend_keyword_repository import TrendKeywordRepository
+from domain.trend_keyword.model.trend_keyword_type import TrendKeywordType
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +38,7 @@ class ReportConsumerImpl(ReportConsumer):
         self.youtube_comment_service = YoutubeCommentService()
         self.comment_service = CommentService()
         self.report_service = ReportService()
+        self.trend_keyword_repository = TrendKeywordRepository()
  
 
     async def _get_report_and_video(self, message: Dict[str, Any]) -> Optional[Tuple[Any, Any]]:
@@ -244,10 +247,88 @@ class ReportConsumerImpl(ReportConsumer):
     async def handle_idea(self, message: Dict[str, Any]):
         """보고서 아이디어 요청 처리"""
         logger.info(f"Handling idea request")
+        try:
+            # 공통 메서드로 report와 video 정보 조회
+            result = await self._get_report_and_video(message)
+            if not result:
+                return
+            report, video = result
+            report_id = report.id
+             # 실시간 트렌드 키워드 분석
+            realtime_keyword= self.rag_service.analyze_realtime_trends()
 
-        # 키워드
+            logger.info(f"실시간 트렌드 키워드 분석 결과: {realtime_keyword}")
 
-        # -------------------------------------------------------------------------------
+            # Video에서 channel_id 가져오기
+            channel_id = getattr(video, "channel_id", None)
+            if not channel_id:
+                logger.error("video에 channel_id가 없습니다.")
+                return
+                
+            # Channel 정보 조회
+            channel = await self.channel_repository.find_by_id(channel_id)
+            if not channel:
+                logger.warning(f"channel_id={channel_id}에 해당하는 채널이 없습니다.")
+                return
+            
+            logger.info(f"연관된 채널 정보: {channel}")
+            
+            # 채널 정보를 사용하여 트렌드 분석
+            channel_concept = getattr(channel, "concept", "")
+            target_audience = getattr(channel, "target", "")
+            
+            channel_keyword = self.rag_service.analyze_channel_trends(
+                channel_concept=channel_concept,
+                target_audience=target_audience
+            )
+            logger.info(f"채널 컨셉 : {channel_concept}")
+            logger.info(f"타겟 시청자 : {target_audience}")
+            logger.info(f"채널 맞춤형 키워드 분석 결과: {channel_keyword}")
+
+            # 벡터 db에 저장(채널 맞춤형 키워드만 저장)
+            await self.content_chunk_repository.save_context(
+                source_type=SourceTypeEnum.PERSONALIZED_KEYWORDS,
+                source_id=report_id,
+                context=json.dumps(channel_keyword, ensure_ascii=False)
+            )
+            logger.info("채널 맞춤형 키워드를 벡터 DB에 저장했습니다.")
+            
+            
+            # 실시간 트렌드 키워드 저장
+            if realtime_keyword and "trends" in realtime_keyword:
+                realtime_keywords_to_save = []
+                for keyword_data in realtime_keyword["trends"]:
+                    trend_keyword = {
+                        "report_id": report_id,
+                        "keyword_type": TrendKeywordType.REAL_TIME,
+                        "keyword": keyword_data.get("keyword", ""),
+                        "score": keyword_data.get("score", 0)
+                    }
+                    realtime_keywords_to_save.append(trend_keyword)
+                
+                # 일괄 저장
+                saved_realtime = await self.trend_keyword_repository.save_bulk(realtime_keywords_to_save)
+                logger.info(f"{len(saved_realtime)}개의 실시간 트렌드 키워드를 MySQL에 저장했습니다.")
+            
+            # 채널 맞춤형 키워드 저장
+            if channel_keyword and "customized_trends" in channel_keyword:
+                channel_keywords_to_save = []
+                for keyword_data in channel_keyword["customized_trends"]:
+                    trend_keyword = {
+                        "report_id": report_id,
+                        "keyword_type": TrendKeywordType.CHANNEL,
+                        "keyword": keyword_data.get("keyword", ""),
+                        "score": keyword_data.get("score", 0)
+                    }
+                    channel_keywords_to_save.append(trend_keyword)
+                
+                # 일괄 저장
+                saved_channel = await self.trend_keyword_repository.save_bulk(channel_keywords_to_save)
+                logger.info(f"{len(saved_channel)}개의 채널 맞춤형 키워드를 MySQL에 저장했습니다.")
+        
+        except Exception as e:
+            logger.error(f"handle_idea 처리 중 오류 발생: {e}")
+
 
         # 메시지에서 video_id 추출 TODO 예외처리
         report = await self.report_repository.find_by_id(message["report_id"])
