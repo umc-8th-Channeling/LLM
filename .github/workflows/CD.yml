@@ -29,20 +29,6 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_ACCESS_TOKEN }}
-      
-      # 이전 Docker 이미지 제거
-      - name: Clean up old Docker images
-        run: |
-          # hadoroke/channeling-llm의 이전 Docker 이미지 제거(latest 제외)
-          docker images hadoroke/channeling-llm --format "{{.ID}}" | \
-          head -n -1 | xargs -r docker rmi -f
-
-          # dangling 이미지 제거
-          docker image prune -f
-      
-      # Docker 이미지 Pull
-      - name: Pull Docker image
-        run: docker pull ${{ secrets.DOCKER_USERNAME }}/channeling-llm:latest
 
       # fastapi-app이 실행중인 경우 중지
       - name: Stop fastapi-app
@@ -57,7 +43,20 @@ jobs:
           cd deploy-configs
           docker-compose stop kafka-consumer || true
           docker-compose rm -f kafka-consumer || true
+
+      # 이전 Docker 이미지 제거
+      - name: Clean up old Docker images
+        run: |
+          # channeling-llm의 이전 Docker 이미지 제거(latest 제외)
+          docker images ${{ secrets.DOCKER_USERNAME }}/channeling-llm -q | xargs -r docker rmi -f
+
+          # dangling 이미지 제거
+          docker image prune -f
       
+      # Docker 이미지 Pull
+      - name: Pull Docker image
+        run: docker pull ${{ secrets.DOCKER_USERNAME }}/channeling-llm:latest
+
       # fastapi-app 다시 실행
       - name: Deploy fastapi-app
         working-directory: deploy-configs
@@ -68,7 +67,7 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_KEY }}
           DB_HOST: ${{ secrets.DB_HOST }}
           DB_PORT: "3306"
-          DB_DATABASE: "channeling"
+          DB_DATABASE: ${{ secrets.DB_DATABASE }}
           DB_USER: ${{ secrets.DB_USERNAME }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
         run: |
@@ -80,7 +79,7 @@ jobs:
         env:
           DB_HOST: ${{ secrets.DB_HOST }}
           DB_PORT: "3306"
-          DB_DATABASE: "channeling"
+          DB_DATABASE: ${{ secrets.DB_DATABASE }}
           DB_USER: ${{ secrets.DB_USERNAME }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
         run: |
