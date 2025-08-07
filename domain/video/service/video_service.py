@@ -1,6 +1,7 @@
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
 
+from core.enums.avg_type import AvgType
 from domain.content_chunk.repository.content_chunk_repository import ContentChunkRepository
 from domain.video.model.video import Video
 from domain.video.repository.video_repository import VideoRepository
@@ -109,3 +110,47 @@ class VideoService:
         # TODO : API 연동
         revisit = ((video.like_count or 0) + (self.video_analytics_dummy["share_count"] or 0) + (self.video_analytics_dummy["subscribers_gained"] or 0)) / video.view
         return round(revisit * 100, 2)
+
+    """
+    동일 주제 평균 조회수
+    """
+    async def get_view_channel_avg(self, video: Video, type: AvgType):
+        target = 0
+        avg = 0
+
+        if type == AvgType.VIEW_AVG:
+            # 조회수 - 평균 대비 비율
+            view_res = await video_repository.get_view_summary_by_channel_id(video.channel_id)
+            avg = view_res[0] / view_res[1] if view_res[1] > 0 else 0
+            target = video.view
+        elif type == AvgType.VIEW_CATEGORY_AVG:
+            # 조회수 - 카테고리별 평균 대비 비율
+            view_category_res = await video_repository.get_view_summary_by_channel_id(video.channel_id, video.video_category)
+            avg = view_category_res[0] / view_category_res[1] if view_category_res[1] > 0 else 0
+            target = video.view
+        elif type == AvgType.LIKE_AVG:
+            # 좋아요수 - 평균 대비 비율
+            like_res = await video_repository.get_like_summary_by_channel_id(video.channel_id)
+            avg = like_res[0] / like_res[1] if like_res[1] > 0 else 0
+            target = video.like_count
+        elif type == AvgType.LIKE_CATEGORY_AVG:
+            # 좋아요수 - 카테고리별 평균 대비 비율
+            like_category_res = await video_repository.get_like_summary_by_channel_id(video.channel_id, video.video_category)
+            avg = like_category_res[0] / like_category_res[1] if like_category_res[1] > 0 else 0
+            target = video.like_count
+        elif type == AvgType.COMMENT_AVG:
+            # 댓글수 - 평균 대비 비율
+            comment_res = await video_repository.get_comment_summary_by_channel_id(video.channel_id)
+            avg = comment_res[0] / comment_res[1] if comment_res[1] > 0 else 0
+            target = video.comment_count
+        elif type == AvgType.COMMENT_CATEGORY_AVG:
+            # 댓글수 - 카테고리별 평균 대비 비율
+            comment_category_res = await video_repository.get_comment_summary_by_channel_id(video.channel_id, video.video_category)
+            avg = comment_category_res[0] / comment_category_res[1] if comment_category_res[1] > 0 else 0
+            target = video.comment_count
+
+        return target / avg if avg > 0 else 0
+
+
+
+

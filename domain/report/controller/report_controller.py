@@ -43,18 +43,20 @@ async def create_report(video_id: int):
         task_id: int
     """
     # report 생성
-    report_data = {"video_id": video_id}
-    report = await report_repository.save(data=report_data)
+    # report_data = {"video_id": video_id}
+    # report = await report_repository.save(data=report_data)
+    report = await report_repository.find_by_id(1)
     print(f"Report created with ID: {report.id}")
     
     # task 생성
-    task_data = {
-        "report_id": report.id, 
-        "overview_status": Status.PENDING, 
-        "analysis_status": Status.PENDING, 
-        "idea_status": Status.PENDING
-        }
-    task = await task_repository.save(data=task_data)
+    # task_data = {
+    #     "report_id": report.id,
+    #     "overview_status": Status.PENDING,
+    #     "analysis_status": Status.PENDING,
+    #     "idea_status": Status.PENDING
+    #     }
+    # task = await task_repository.save(data=task_data)
+    task = await task_repository.find_by_id(1)
     print(f"Task created with ID: {task.id}")
 
     # 메시지 생성
@@ -78,8 +80,8 @@ async def create_report(video_id: int):
 
     # 메시지 발행
     await report_producer.send_message("overview-topic", overview_message)
-    await report_producer.send_message("analysis-topic", analysis_message)
-    await report_producer.send_message("idea-topic", idea_message)
+    # await report_producer.send_message("analysis-topic", analysis_message)
+    # await report_producer.send_message("idea-topic", idea_message)
 
     return ApiResponse.on_success(SuccessStatus._OK, {"task_id": task.id})
 

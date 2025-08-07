@@ -3,6 +3,7 @@ import time
 import json
 import logging
 
+from core.enums.avg_type import AvgType
 from domain.comment.service.comment_service import CommentService
 from domain.channel.repository.channel_repository import ChannelRepository
 from domain.content_chunk.repository.content_chunk_repository import ContentChunkRepository
@@ -90,16 +91,16 @@ class ReportConsumerImpl(ReportConsumer):
             logger.info("요약 결과를 벡터 DB에 저장했습니다.")
 
             # 댓글 정보 조회
-            comments_by_youtube = await youtubecommentservice.get_comments(video_id,report_id)
-            comments_obj = await comment_service.convert_to_comment_objects(comments_by_youtube)
-            result = await comment_service.gather_classified_comments(comments_obj)
-            summarized_comments = await comment_service.summarize_comments_by_emotions_with_llm(result)
-            await report_service.update_report_emotion_counts(report_id, summarized_comments)
-            comments_by_youtube = await self.youtubecommentservice.get_comments(youtube_video_id,report_id)
-            comments_obj = await self.commentservice.convert_to_comment_objects(comments_by_youtube)
-            result = await self.commentservice.gather_classified_comments(comments_obj)
-            summarized_comments = await self.commentservice.summarize_comments_by_emotions_with_llm(result)
-            await self.report_service.update_report_emotion_counts(report_id, summarized_comments)
+            # comments_by_youtube = await youtubecommentservice.get_comments(video_id,report_id)
+            # comments_obj = await comment_service.convert_to_comment_objects(comments_by_youtube)
+            # result = await comment_service.gather_classified_comments(comments_obj)
+            # summarized_comments = await comment_service.summarize_comments_by_emotions_with_llm(result)
+            # await report_service.update_report_emotion_counts(report_id, summarized_comments)
+            # comments_by_youtube = await self.youtubecommentservice.get_comments(youtube_video_id,report_id)
+            # comments_obj = await self.commentservice.convert_to_comment_objects(comments_by_youtube)
+            # result = await self.commentservice.gather_classified_comments(comments_obj)
+            # summarized_comments = await self.commentservice.summarize_comments_by_emotions_with_llm(result)
+            # await self.report_service.update_report_emotion_counts(report_id, summarized_comments)
 
             # 댓글 정보 조회 
             # 수치 정보 조회
@@ -107,12 +108,20 @@ class ReportConsumerImpl(ReportConsumer):
             concept = await video_service.analyze_consistency(video)
             seo = await video_service.analyze_seo(video)
             revisit = await video_service.analyze_revisit(video)
+
+            print(f"조회수 : {video.view}")
+            print(f"조회수평균-채널 : {await video_service.get_view_channel_avg(video, AvgType.VIEW_AVG)}")
+            print(f"조회수평균-토픽 : {await video_service.get_view_channel_avg(video, AvgType.VIEW_CATEGORY_AVG)}")
+            print(f"좋아요 : {video.like_count}")
+            print(f"좋아요평균-토픽 : {await video_service.get_view_channel_avg(video, AvgType.LIKE_AVG)}")
+            print(f"좋아요평균-채널 : {await video_service.get_view_channel_avg(video, AvgType.LIKE_CATEGORY_AVG)}")
+            print(f"댓글 : {video.comment_count}")
+            print(f"댓글평균-토픽 : {await video_service.get_view_channel_avg(video, AvgType.COMMENT_AVG)}")
+            print(f"댓글평균-채널 : {await video_service.get_view_channel_avg(video, AvgType.COMMENT_CATEGORY_AVG)}")
+
             print(f"일관성 : {concept}")
             print(f"seo : {seo}")
             print(f"재방문률 : {revisit}")
-            print(f"조회수 : {video.view}")
-            print(f"좋아요 : {video.like_count}")
-            print(f"댓글 : {video.comment_count}")
 
             # 요약 정보 업데이트
             # report_repository.save({
