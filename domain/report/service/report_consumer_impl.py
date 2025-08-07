@@ -105,19 +105,21 @@ class ReportConsumerImpl(ReportConsumer):
             # 댓글 정보 조회 
             # 수치 정보 조회
             video_service = VideoService()
+
+            avg_dic = await video_service.get_rating_avg(video)
             concept = await video_service.analyze_consistency(video)
             seo = await video_service.analyze_seo(video)
             revisit = await video_service.analyze_revisit(video)
 
             print(f"조회수 : {video.view}")
-            print(f"조회수평균-채널 : {await video_service.get_view_channel_avg(video, AvgType.VIEW_AVG)}")
-            print(f"조회수평균-토픽 : {await video_service.get_view_channel_avg(video, AvgType.VIEW_CATEGORY_AVG)}")
+            print(f"조회수평균-채널 : {avg_dic['view_avg']}")
+            print(f"조회수평균-토픽 : {avg_dic['view_category_avg']}")
             print(f"좋아요 : {video.like_count}")
-            print(f"좋아요평균-토픽 : {await video_service.get_view_channel_avg(video, AvgType.LIKE_AVG)}")
-            print(f"좋아요평균-채널 : {await video_service.get_view_channel_avg(video, AvgType.LIKE_CATEGORY_AVG)}")
+            print(f"좋아요평균-토픽 : {avg_dic['like_avg']}")
+            print(f"좋아요평균-채널 : {avg_dic['like_category_avg']}")
             print(f"댓글 : {video.comment_count}")
-            print(f"댓글평균-토픽 : {await video_service.get_view_channel_avg(video, AvgType.COMMENT_AVG)}")
-            print(f"댓글평균-채널 : {await video_service.get_view_channel_avg(video, AvgType.COMMENT_CATEGORY_AVG)}")
+            print(f"댓글평균-토픽 : {avg_dic['comment_avg']}")
+            print(f"댓글평균-채널 : {avg_dic['comment_category_avg']}")
 
             print(f"일관성 : {concept}")
             print(f"seo : {seo}")

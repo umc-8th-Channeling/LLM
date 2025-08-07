@@ -112,45 +112,65 @@ class VideoService:
         return round(revisit * 100, 2)
 
     """
-    동일 주제 평균 조회수
+    채널/토픽(카테고리별) 평균 조회수
     """
-    async def get_view_channel_avg(self, video: Video, type: AvgType):
-        target = 0
-        avg = 0
+    async def get_rating_avg(self, video: Video):
 
-        if type == AvgType.VIEW_AVG:
-            # 조회수 - 평균 대비 비율
-            view_res = await video_repository.get_view_summary_by_channel_id(video.channel_id)
-            avg = view_res[0] / view_res[1] if view_res[1] > 0 else 0
-            target = video.view
-        elif type == AvgType.VIEW_CATEGORY_AVG:
-            # 조회수 - 카테고리별 평균 대비 비율
-            view_category_res = await video_repository.get_view_summary_by_channel_id(video.channel_id, video.video_category)
-            avg = view_category_res[0] / view_category_res[1] if view_category_res[1] > 0 else 0
-            target = video.view
-        elif type == AvgType.LIKE_AVG:
-            # 좋아요수 - 평균 대비 비율
-            like_res = await video_repository.get_like_summary_by_channel_id(video.channel_id)
-            avg = like_res[0] / like_res[1] if like_res[1] > 0 else 0
-            target = video.like_count
-        elif type == AvgType.LIKE_CATEGORY_AVG:
-            # 좋아요수 - 카테고리별 평균 대비 비율
-            like_category_res = await video_repository.get_like_summary_by_channel_id(video.channel_id, video.video_category)
-            avg = like_category_res[0] / like_category_res[1] if like_category_res[1] > 0 else 0
-            target = video.like_count
-        elif type == AvgType.COMMENT_AVG:
-            # 댓글수 - 평균 대비 비율
-            comment_res = await video_repository.get_comment_summary_by_channel_id(video.channel_id)
-            avg = comment_res[0] / comment_res[1] if comment_res[1] > 0 else 0
-            target = video.comment_count
-        elif type == AvgType.COMMENT_CATEGORY_AVG:
-            # 댓글수 - 카테고리별 평균 대비 비율
-            comment_category_res = await video_repository.get_comment_summary_by_channel_id(video.channel_id, video.video_category)
-            avg = comment_category_res[0] / comment_category_res[1] if comment_category_res[1] > 0 else 0
-            target = video.comment_count
+        # 채널 내 전체 영상 조회
+        videos = await video_repository.find_by_channel_id(video.channel_id)
+        if len(videos) == 1 :
+            return {
+                "view_avg": 0,
+                "view_category_avg": 0,
+                "like_avg": 0,
+                "like_category_avg": 0,
+                "comment_avg": 0,
+                "comment_category_avg": 0
+            }
 
-        return target / avg if avg > 0 else 0
+        # 조회수 - 평균 대비 비율
+        target = video.view
+        avg = sum(v.view for v in videos if v.view is not None) / len(videos)
+        view_avg = await self._avg(target, avg)
 
+        # 조회수 - 카테고리별 평균 대비 비율
+        target = video.view
+        avg = sum(v.view for v in videos if v.video_category == video.video_category) / len(videos)
+        view_category_avg = await self._avg(target, avg)
+
+        # 좋아요수 - 평균 대비 비율
+        target = video.like_count
+        avg = sum(v.like_count for v in videos if v.like_count is not None) / len(videos)
+        like_avg = await self._avg(target, avg)
+
+        # 좋아요수 - 카테고리별 평균 대비 비율
+        target = video.like_count
+        avg = sum(v.like_count for v in videos if v.video_category == video.video_category) / len(videos)
+        like_category_avg = await self._avg(target, avg)
+
+        # 댓글수 - 평균 대비 비율
+        target = video.comment_count
+        avg = sum(v.comment_count for v in videos if v.comment_count is not None) / len(videos)
+        comment_avg = await self._avg(target, avg)
+
+        # 댓글수 - 카테고리별 평균 대비 비율
+        target = video.comment_count
+        avg = sum(v.comment_count for v in videos if v.video_category == video.video_category) / len(videos)
+        comment_category_avg = await self._avg(target, avg)
+
+        return {
+            "view_avg": view_avg,
+            "view_category_avg": view_category_avg,
+            "like_avg": like_avg,
+            "like_category_avg": like_category_avg,
+            "comment_avg": comment_avg,
+            "comment_category_avg": comment_category_avg
+        }
+
+
+    async def _avg(self, target, avg):
+        ratio_avg = target / avg if avg != 0 else 0
+        return round(ratio_avg * 100, 2)
 
 
 

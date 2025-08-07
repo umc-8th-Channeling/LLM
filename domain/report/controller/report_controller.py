@@ -43,20 +43,18 @@ async def create_report(video_id: int):
         task_id: int
     """
     # report 생성
-    # report_data = {"video_id": video_id}
-    # report = await report_repository.save(data=report_data)
-    report = await report_repository.find_by_id(1)
+    report_data = {"video_id": video_id}
+    report = await report_repository.save(data=report_data)
     print(f"Report created with ID: {report.id}")
     
     # task 생성
-    # task_data = {
-    #     "report_id": report.id,
-    #     "overview_status": Status.PENDING,
-    #     "analysis_status": Status.PENDING,
-    #     "idea_status": Status.PENDING
-    #     }
-    # task = await task_repository.save(data=task_data)
-    task = await task_repository.find_by_id(1)
+    task_data = {
+        "report_id": report.id,
+        "overview_status": Status.PENDING,
+        "analysis_status": Status.PENDING,
+        "idea_status": Status.PENDING
+        }
+    task = await task_repository.save(data=task_data)
     print(f"Task created with ID: {task.id}")
 
     # 메시지 생성
