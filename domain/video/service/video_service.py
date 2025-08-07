@@ -1,5 +1,4 @@
 import numpy as np
-from sklearn.metrics.pairwise import cosine_similarity
 
 from domain.content_chunk.repository.content_chunk_repository import ContentChunkRepository
 from domain.video.model.video import Video
@@ -42,11 +41,22 @@ class VideoService:
             embedding = await content_chunk_repository.generate_embedding(text)
             other_embeddings.append(embedding)
 
-        # 3. 코사인 유사도 계산
-        similarity_scores = cosine_similarity([target_embedding], other_embeddings)
+        # 3. 코사인 유사도 계산 (NumPy 사용)
+        similarity_scores = []
+        for other_embedding in other_embeddings:
+            # 코사인 유사도 = (A·B) / (||A|| * ||B||)
+            dot_product = np.dot(target_embedding, other_embedding)
+            norm_target = np.linalg.norm(target_embedding)
+            norm_other = np.linalg.norm(other_embedding)
+            
+            if norm_target == 0 or norm_other == 0:
+                similarity = 0
+            else:
+                similarity = dot_product / (norm_target * norm_other)
+            similarity_scores.append(similarity)
 
         # 4. 평균 유사도 점수 계산
-        average_similarity = np.mean(similarity_scores[0])
+        average_similarity = np.mean(similarity_scores)
         consistency_score = average_similarity * 100
         return round(consistency_score, 0)
 

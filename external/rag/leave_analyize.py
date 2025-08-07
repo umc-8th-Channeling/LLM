@@ -1,19 +1,22 @@
 from typing import List
+
+from dotenv import load_dotenv
 from domain.content_chunk.repository.content_chunk_repository import ContentChunkRepository
 import external.youtube.analytics_service as analyticsServcie
 import external.rag.chunk_service as ChunkService # ← 지연 import로 순환참조 방지
 from external.youtube.transcript_service import TranscriptService  # 유튜브 자막 처리 서비스
 from domain.video.model.video import Video
 from core.enums.source_type import SourceTypeEnum
-from external.rag.rag_service import RagService
+from external.rag.rag_service_impl import RagServiceImpl
 import json
 from core.llm.prompt_template_manager import PromptTemplateManager
 from domain.channel.repository.channel_repository import ChannelRepository
-
+import os
+load_dotenv()
 
 transcript_service = TranscriptService()
 content_repository = ContentChunkRepository()
-rag_service = RagService()
+rag_service = RagServiceImpl()
 channel_repository = ChannelRepository()
 async def analyze_leave(video: Video) -> str:
 
@@ -25,7 +28,7 @@ async def analyze_leave(video: Video) -> str:
 # 1. 영상, 채널 정보 가져오기
 
     # 구글 엑세스 토큰
-    token = "google.access.token"
+    token = os.getenv("GOOGLE_ACCESS_TOKEN")
     # 영상 가져오기
     youtube_video_id = video.youtube_video_id
     video_id = video.id
@@ -117,5 +120,5 @@ async def analyze_leave(video: Video) -> str:
     formatted_prompt = prompt_template_str.format(**context_data)  
    
 # 10. LLM 직접 호출해서 결과 가져오기
-    result = rag_service._execute_llm_direct(formatted_prompt)
+    result = rag_service.execute_llm_direct(formatted_prompt)
     return result
