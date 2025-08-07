@@ -113,13 +113,6 @@ II. 글쓰기와 재능 (0:25 - 0:59)
         return """
 당신은 유튜브 알고리즘 최적화 전문가입니다.
 제공된 영상 데이터를 분석하여 각 항목별로 점수를 매기고 구체적인 개선 방안을 제시해주세요.
-    
-    @staticmethod
-    def get_trend_analysis_prompt() -> str:
-        """실시간 트렌드 분석용 프롬프트 템플릿"""
-        return """
-당신은 YouTube 콘텐츠 제작자를 위한 트렌드 분석 전문가입니다.
-Google Trends 데이터를 기반으로 현재 가장 주목받는 키워드를 최대 5개까지 선정하고 분석해주세요.
 
 평가 기준:
 - 10점: 완벽한 최적화 
@@ -269,6 +262,15 @@ Google Trends 데이터를 기반으로 현재 가장 주목받는 키워드를 
 ## 질문
 {input_data['input']}
 """.strip()
+    
+
+    @staticmethod
+    def get_trend_analysis_prompt() -> str:
+        """실시간 트렌드 분석용 프롬프트 템플릿"""
+        return """
+당신은 YouTube 콘텐츠 제작자를 위한 트렌드 분석 전문가입니다.
+Google Trends 데이터를 기반으로 현재 가장 주목받는 키워드를 최대 5개까지 선정하고 분석해주세요.
+
 입력 데이터 형식:
 - trends_data: Google Trends API에서 가져온 트렌드 데이터
   - keyword: 키워드
