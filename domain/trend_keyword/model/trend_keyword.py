@@ -6,7 +6,7 @@ from domain.trend_keyword.model.trend_keyword_type import TrendKeywordType
 
 class TrendKeyword(SQLModel, table=True):
     """TrendKeyword 테이블 모델 - 리포트별 트렌드 키워드 저장"""
-    __tablename__ = "trend_keywords"
+    __tablename__ = "trend_keyword"
     
     # Primary Key
     id: Optional[int] = Field(default=None, primary_key=True)
