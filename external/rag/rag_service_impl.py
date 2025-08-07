@@ -13,7 +13,9 @@ from langchain_core.prompts import PromptTemplate
 from langchain_core.prompts.chat import ChatPromptTemplate, HumanMessagePromptTemplate
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from core.llm.prompt_template_manager import PromptTemplateManager
+from external.youtube.trend_service import TrendService
 from typing import List, Dict, Any
+from datetime import datetime
 import json
 import logging
 
@@ -26,6 +28,7 @@ class RagServiceImpl(RagService):
         self.video_detail_service = VideoDetailService()
         self.youtube_comment_service = YoutubeCommentService()
         self.content_chunk_repository = ContentChunkRepository()
+        self.trend_service = TrendService()
         self.llm = ChatOpenAI(model="gpt-4o-mini")
     
     def summarize_video(self, video_id: str) -> str:
@@ -127,46 +130,158 @@ class RagServiceImpl(RagService):
         Returns:
             알고리즘 최적화 분석 결과
         """
-        # 영상 상세 정보 조회
-        video_details = self.video_detail_service.get_video_details(video_id)
-        
-        # 채널 정보 조회
-        channel_id = video_details.get('channelId')
-        
-        channel_stats = {}
-        if channel_id:
-            channel_stats = self.video_detail_service.get_channel_stats(channel_id)
-        
-        # 분석에 필요한 데이터 구조화
-        optimization_data = {
-            "video": {
-                "title": video_details.get('title', ''),
-                "description": video_details.get('description', ''),
-                "tags": video_details.get('tags', []),
-                "publishedAt": video_details.get('publishedAt', ''),
-                "duration": video_details.get('duration', ''),
-                "viewCount": video_details.get('viewCount', 0),
-                "likeCount": video_details.get('likeCount', 0),
-                "commentCount": video_details.get('commentCount', 0),
-                "thumbnails": video_details.get('thumbnails', {})
-            },
-            "channel": {
-                "name": video_details.get('channelTitle', ''),
-                "subscriberCount": channel_stats.get('subscriberCount', 0),
-                "totalViewCount": channel_stats.get('viewCount', 0),
-                "totalVideoCount": channel_stats.get('videoCount', 0)
+        try:
+            # 영상 상세 정보 조회
+            video_details = self.video_detail_service.get_video_details(video_id)
+            
+            # 채널 정보 조회
+            channel_id = video_details.get('channelId')
+            
+            channel_stats = {}
+            if channel_id:
+                channel_stats = self.video_detail_service.get_channel_stats(channel_id)
+            
+            # 분석에 필요한 데이터 구조화
+            optimization_data = {
+                "video": {
+                    "title": video_details.get('title', ''),
+                    "description": video_details.get('description', ''),
+                    "tags": video_details.get('tags', []),
+                    "publishedAt": video_details.get('publishedAt', ''),
+                    "duration": video_details.get('duration', ''),
+                    "viewCount": video_details.get('viewCount', 0),
+                    "likeCount": video_details.get('likeCount', 0),
+                    "commentCount": video_details.get('commentCount', 0),
+                    "thumbnails": video_details.get('thumbnails', {})
+                },
+                "channel": {
+                    "name": video_details.get('channelTitle', ''),
+                    "subscriberCount": channel_stats.get('subscriberCount', 0),
+                    "totalViewCount": channel_stats.get('viewCount', 0),
+                    "totalVideoCount": channel_stats.get('videoCount', 0)
+                }
             }
+            
+            # JSON 형식으로 context 생성
+            context = json.dumps(optimization_data, ensure_ascii=False, indent=2)
+            
+            query = "이 유튜브 영상의 알고리즘 최적화 상태를 분석하고 구체적인 개선 방안을 제시해주세요."
+            
+            # 프롬프트 템플릿 가져오기
+            prompt_template = PromptTemplateManager.get_algorithm_optimization_prompt()
+            
+            return self.execute_llm_chain(context, query, prompt_template)
+        
+        except Exception as e:
+            logger.error(f"알고리즘 최적화 분석 중 오류 발생: {e}")
+            raise e
+            
+
+    def analyze_realtime_trends(self, limit: int = 6, geo: str = "KR") -> Dict:
+        """
+        실시간 트렌드를 분석하여 YouTube 콘텐츠에 적합한 형태로 반환
+        
+        Args:
+            limit: 분석할 트렌드 개수 (최대 6개)
+            geo: 지역 코드 (기본값: KR)
+            
+        Returns:
+            분석된 트렌드 정보
+        """
+        # 1. Google Trends에서 실시간 트렌드 가져오기
+        raw_trends = self.trend_service.get_realtime_trends(limit=limit*2, geo=geo)  # 여유있게 가져오기
+        
+        if not raw_trends:
+            return {"error": "트렌드 데이터를 가져올 수 없습니다."}
+        
+        current_date = datetime.now().strftime("%Y년 %m월 %d일")
+        
+        # 3. Context 구성
+        context = {
+            "trends_data": raw_trends,
+            "current_date": current_date,
+            "region": geo
         }
         
-        # JSON 형식으로 context 생성
-        context = json.dumps(optimization_data, ensure_ascii=False, indent=2)
+        # 4. LLM에게 분석 요청
+        query = f"실시간 트렌드 중 YouTube 콘텐츠로 적합한 상위 {limit}개를 선정하고 분석해주세요."
+        prompt_template = PromptTemplateManager.get_trend_analysis_prompt()
         
-        query = "이 유튜브 영상의 알고리즘 최적화 상태를 분석하고 구체적인 개선 방안을 제시해주세요."
+        # 5. LLM 실행 및 결과 파싱
+        result_str = self.execute_llm_chain(
+            context=json.dumps(context, ensure_ascii=False),
+            query=query,
+            prompt_template_str=prompt_template
+        )
         
-        # 프롬프트 템플릿 가져오기
-        prompt_template = PromptTemplateManager.get_algorithm_optimization_prompt()
+        try:
+            result = json.loads(result_str)
+            return result
+        except json.JSONDecodeError:
+            return {"error": "결과 파싱 오류", "raw_result": result_str}
+    
+    
+
+    def analyze_channel_trends(
+        self,
+        channel_concept: str,
+        target_audience: str
+
+    ) -> Dict:
+        """
+        채널 맞춤형 트렌드를 생성하고 분석
         
-        return self.execute_llm_chain(context, query, prompt_template)
+        Args:
+            channel_concept: 채널 컨셉
+            target_audience: 타겟 시청자
+            
+        Returns:
+            채널 맞춤형 트렌드 분석 결과
+        """
+        # 1. Context 구성 (채널 정보)
+        current_date = datetime.now().strftime("%Y년 %m월 %d일")
+        
+        context = {
+            "channel_concept": channel_concept,
+            "target_audience": target_audience,
+            "current_date": current_date
+        }
+        
+        # 2. LLM에게 분석 요청
+        query = "채널에 최적화된 트렌드 키워드 6개를 생성하고 분석해주세요."
+        prompt_template = PromptTemplateManager.get_channel_customized_trend_prompt()
+        
+        # 3. 채널 맞춤형 트렌드를 위한 특별 처리
+        documents = [Document(page_content=json.dumps(context, ensure_ascii=False))]
+        
+        # 필요한 모든 변수를 포함한 프롬프트 템플릿 생성
+        prompt = PromptTemplate(
+            input_variables=["input", "context", "channel_concept", "target_audience", "current_date"],
+            template=prompt_template
+        )
+        
+        chat_prompt = ChatPromptTemplate.from_messages([
+            HumanMessagePromptTemplate(prompt=prompt)
+        ])
+        
+        # 체인 실행
+        combine_chain = create_stuff_documents_chain(self.llm, chat_prompt)
+        result_str = combine_chain.invoke({
+            "input": query,
+            "context": documents,
+            "channel_concept": channel_concept,
+            "target_audience": target_audience,
+            "current_date": current_date
+        })
+        
+        
+        try:
+            result = json.loads(result_str)
+            return result
+        except json.JSONDecodeError:
+            return {"error": "결과 파싱 오류", "raw_result": result_str}
+
+
 
     def execute_llm_chain(self, context: str, query: str, prompt_template_str: str) -> str:
         """
