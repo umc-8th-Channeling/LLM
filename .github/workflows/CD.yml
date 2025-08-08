@@ -61,15 +61,25 @@ jobs:
       - name: Deploy fastapi-app
         working-directory: deploy-configs
         env:
-          S3_BUCKET_NAME: ${{ secrets.S3_BUCKET_NAME }}
-          AWS_REGION: ${{ secrets.S3_REGION }}
-          AWS_ACCESS_KEY_ID: ${{ secrets.S3_ACCESS_KEY }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_KEY }}
-          DB_HOST: ${{ secrets.DB_HOST }}
-          DB_PORT: "3306"
-          DB_DATABASE: ${{ secrets.DB_DATABASE }}
-          DB_USER: ${{ secrets.DB_USERNAME }}
-          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          # MySQL
+          MYSQL_HOST: ${{ secrets.MYSQL_HOST }}
+          MYSQL_PORT: "3306"
+          MYSQL_DATABASE: ${{ secrets.MYSQL_DATABASE }}
+          MYSQL_USER: ${{ secrets.MYSQL_USER }}
+          MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
+
+          # PostgreSQL
+          PG_HOST: ${{ secrets.PG_HOST }}
+          PG_PORT: "5432"
+          PG_DATABASE: ${{ secrets.PG_DATABASE }}
+          PG_USER: ${{ secrets.PG_USER }}
+          PG_PASSWORD: ${{ secrets.PG_PASSWORD }}
+
+          # API Keys
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+
         run: |
           docker-compose up -d --no-deps fastapi-app
 
@@ -77,10 +87,23 @@ jobs:
       - name: Deploy kafka-consumer
         working-directory: deploy-configs
         env:
-          DB_HOST: ${{ secrets.DB_HOST }}
-          DB_PORT: "3306"
-          DB_DATABASE: ${{ secrets.DB_DATABASE }}
-          DB_USER: ${{ secrets.DB_USERNAME }}
-          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          # MySQL
+          MYSQL_HOST: ${{ secrets.MYSQL_HOST }}
+          MYSQL_PORT: "3306"
+          MYSQL_DATABASE: ${{ secrets.MYSQL_DATABASE }}
+          MYSQL_USER: ${{ secrets.MYSQL_USER }}
+          MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
+
+          # PostgreSQL
+          PG_HOST: ${{ secrets.PG_HOST }}
+          PG_PORT: "5432"
+          PG_DATABASE: ${{ secrets.PG_DATABASE }}
+          PG_USER: ${{ secrets.PG_USER }}
+          PG_PASSWORD: ${{ secrets.PG_PASSWORD }}
+
+          # API Keys
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
         run: |
           docker-compose up -d --no-deps kafka-consumer

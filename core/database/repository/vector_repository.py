@@ -97,8 +97,6 @@ class VectorRepository(Generic[T], ABC):
                 "embedding": embedding,
                 "meta": meta
             })
-            # 예시로 print문 사용
-            print(f"Saved chunk {i}")
 
     
 

@@ -50,9 +50,9 @@ async def create_report(video_id: int):
     
     # task 생성
     task_data = {
-        "report_id": report.id, 
-        "overview_status": Status.PENDING, 
-        "analysis_status": Status.PENDING, 
+        "report_id": report.id,
+        "overview_status": Status.PENDING,
+        "analysis_status": Status.PENDING,
         "idea_status": Status.PENDING
         }
     task = await task_repository.save(data=task_data)

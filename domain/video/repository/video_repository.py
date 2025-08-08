@@ -1,10 +1,8 @@
-from sqlmodel import Session, select
+from sqlmodel import select, func
 
 from core.config.database_config import MySQLSessionLocal
-# from core.config.database_config import AsyncSessionLocal
-from domain.channel.model.channel import Channel
-from domain.video.model.video import Video
 from core.database.repository.crud_repository import CRUDRepository
+from domain.video.model.video import Video
 
 
 class VideoRepository(CRUDRepository[Video]):
@@ -12,7 +10,7 @@ class VideoRepository(CRUDRepository[Video]):
         return Video
 
     # 채널별 비디오 조회
-    async def find_by_channel_id(self, channel_id: int) -> list[Channel]:
+    async def find_by_channel_id(self, channel_id: int) -> list[Video]:
         """
         """
         async with MySQLSessionLocal() as session:

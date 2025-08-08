@@ -41,3 +41,13 @@ class RagService(ABC):
     def execute_llm_direct(self, prompt: str) -> str:
         """LLM 직접 실행"""
         pass
+
+    @abstractmethod
+    def analyze_realtime_trends(self, limit: int = 6, geo: str = "KR") -> Dict:
+        """실시간 트렌드 분석, 유튜브 컨텐츠에 적합한 형태로 반환"""
+        pass
+
+    @abstractmethod
+    def analyze_channel_trends(self, channel_concept: str, target_audience: str) -> Dict:
+        """채널 맞춤형 트렌드 분석"""
+        pass
