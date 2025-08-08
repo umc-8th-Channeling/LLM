@@ -141,27 +141,33 @@ class ReportConsumerImpl(ReportConsumer):
             seo = await video_service.analyze_seo(video)
             revisit = await video_service.analyze_revisit(video)
 
-            print(f"조회수 : {video.view}")
-            print(f"조회수평균-채널 : {avg_dic['view_avg']}")
-            print(f"조회수평균-토픽 : {avg_dic['view_category_avg']}")
-            print(f"좋아요 : {video.like_count}")
-            print(f"좋아요평균-토픽 : {avg_dic['like_avg']}")
-            print(f"좋아요평균-채널 : {avg_dic['like_category_avg']}")
-            print(f"댓글 : {video.comment_count}")
-            print(f"댓글평균-토픽 : {avg_dic['comment_avg']}")
-            print(f"댓글평균-채널 : {avg_dic['comment_category_avg']}")
+            logger.info(f"조회수 : {video.view}")
+            logger.info(f"조회수평균-채널 : {avg_dic['view_avg']}")
+            logger.info(f"조회수평균-토픽 : {avg_dic['view_category_avg']}")
+            logger.info(f"좋아요 : {video.like_count}")
+            logger.info(f"좋아요평균-토픽 : {avg_dic['like_avg']}")
+            logger.info(f"좋아요평균-채널 : {avg_dic['like_category_avg']}")
+            logger.info(f"댓글 : {video.comment_count}")
+            logger.info(f"댓글평균-토픽 : {avg_dic['comment_avg']}")
+            logger.info(f"댓글평균-채널 : {avg_dic['comment_category_avg']}")
 
-            print(f"일관성 : {concept}")
-            print(f"seo : {seo}")
-            print(f"재방문률 : {revisit}")
+            logger.info(f"일관성 : {concept}")
+            logger.info(f"seo : {seo}")
+            logger.info(f"재방문률 : {revisit}")
 
             # 요약 정보 업데이트
             await self.report_repository.save({
                 "id": report_id,
                 # 영상 평가
                 "like_count": video.like_count,
+                "like_channel_avg": avg_dic['like_category_avg'],
+                "like_topic_avg": avg_dic['like_avg'],
                 "comment" : video.comment_count,
+                "comment_channel_avg": avg_dic['comment_category_avg'],
+                "comment_topic_avg": avg_dic['comment_avg'],
                 "view" : video.view,
+                "view_channel_avg": avg_dic['view_avg'],
+                "view_topic_avg": avg_dic['view_category_avg'],
                 "concept" : concept,
                 "seo" : seo,
                 "revisit" : revisit,
