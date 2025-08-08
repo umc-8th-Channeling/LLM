@@ -5,6 +5,8 @@ uvicorn
 # Database
 sqlmodel
 aiomysql
+asyncpg
+pgvector
 cryptography
 pydantic-settings
 
@@ -17,5 +19,24 @@ httpx
 # File Upload Support
 python-multipart
 
+# AI
+openai
+langchain-core
+langchain-openai
+langchain
+
 #FastStream
 faststream[kafka]
+
+
+#greennet
+greenlet
+
+
+#youtube
+youtube-transcript-api
+# Google API Client
+google-api-python-client
+
+#trend
+serpapi
