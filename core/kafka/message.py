@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from typing import Optional
 from enum import Enum
 
 
@@ -14,5 +15,6 @@ class Message(BaseModel):
     task_id: int
     report_id: int
     step: Step
+    google_access_token: Optional[str] = None
 
 

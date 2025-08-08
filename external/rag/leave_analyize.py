@@ -21,7 +21,7 @@ content_repository = ContentChunkRepository()
 rag_service = RagServiceImpl()
 channel_repository = ChannelRepository()
 
-async def analyze_leave(video: Video) -> str:
+async def analyze_leave(video: Video, token: str) -> str:
     try:
         logger.info(f"시청자 이탈 분석 시작 - 비디오 ID: {video.id}, 유튜브 ID: {video.youtube_video_id}")
     
