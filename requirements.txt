@@ -35,3 +35,8 @@ greenlet
 
 #youtube
 youtube-transcript-api
+# Google API Client
+google-api-python-client
+
+#trend
+serpapi

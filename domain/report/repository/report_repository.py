@@ -10,9 +10,21 @@ class ReportRepository(CRUDRepository[Report]):
         report = await self.find_by_id(report_id)
         if not report:
             return False
+        update_data = {"id": report_id}
+        
+        # CommentType enum과 DB 필드명 매핑
+        field_mapping = {
+            "ADVICE_OPINION": "advice_comment",
+            "NEGATIVE": "negative_comment", 
+            "NEUTRAL": "neutral_comment",
+            "POSITIVE": "positive_comment"
+        }
+        
         for comment_type, count in count_dict.items():
-            setattr(report, f"{comment_type.value}_comment", count)
-        await self.save(report.dict())
+            field_name = field_mapping.get(comment_type.value)
+            if field_name:
+                update_data[field_name] = count
+        await self.save(update_data)
         return True
     
 

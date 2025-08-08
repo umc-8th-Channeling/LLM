@@ -4,6 +4,9 @@ from fastapi import FastAPI, HTTPException
 app = FastAPI()
 
 async def get_youtube_analytics_data(access_token: str, video_id: str) -> dict:
+    import logging
+    logger = logging.getLogger(__name__)
+    
     url = (
         "https://youtubeanalytics.googleapis.com/v2/reports"
         "?ids=channel==MINE"
@@ -22,7 +25,35 @@ async def get_youtube_analytics_data(access_token: str, video_id: str) -> dict:
     async with httpx.AsyncClient() as client:
         response = await client.get(url, headers=headers)
 
-    if response.status_code != 200:
+    if response.status_code == 429:
+        logger.error("YouTube Analytics API 요청 한도 초과 (429 Too Many Requests)")
+        raise HTTPException(
+            status_code=429,
+            detail="YouTube Analytics API 요청 한도를 초과했습니다. 잠시 후 다시 시도해주세요."
+        )
+    elif response.status_code == 401:
+        logger.error("YouTube Analytics API 인증 실패 (401 Unauthorized) - 토큰이 만료되었거나 권한이 없습니다.")
+        raise HTTPException(
+            status_code=401,
+            detail="Google Access Token이 유효하지 않습니다. 토큰을 갱신해주세요."
+        )
+    elif response.status_code == 403:
+        logger.error("YouTube Analytics API 권한 부족 (403 Forbidden)")
+        error_data = response.json() if response.text else {}
+        if "error" in error_data:
+            error_reason = error_data.get("error", {}).get("errors", [{}])[0].get("reason", "unknown")
+            if error_reason == "quotaExceeded":
+                logger.error("YouTube Analytics API 일일 할당량 초과")
+                raise HTTPException(
+                    status_code=403,
+                    detail="YouTube Analytics API 일일 할당량을 초과했습니다."
+                )
+        raise HTTPException(
+            status_code=403,
+            detail=f"YouTube Analytics API 접근 권한이 없습니다: {response.text}"
+        )
+    elif response.status_code != 200:
+        logger.error(f"YouTube Analytics API 오류 ({response.status_code}): {response.text}")
         raise HTTPException(
             status_code=response.status_code,
             detail=f"Failed to fetch data: {response.text}"

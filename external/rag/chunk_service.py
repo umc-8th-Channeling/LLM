@@ -4,12 +4,12 @@ from domain.content_chunk.repository.content_chunk_repository import ContentChun
 
 from core.llm.prompt_template_manager import PromptTemplateManager
 from core.enums.source_type import SourceTypeEnum
-from external.rag.rag_service import RagService
+from external.rag.rag_service_impl import RagServiceImpl
 import json
 
 
 content_chunk_repo = ContentChunkRepository()
-rag_service = RagService()
+rag_service = RagServiceImpl()
 
 
 #이진 탐색 사용해서 시작하는 인덱스 구하기
@@ -205,7 +205,7 @@ async def create_meaning_chunks_with_focus(
     for attempt in range(retry + 1):
         try:
             query="이 데이터의 내용을 설명해줘"
-            summary = rag_service._execute_llm_chain(context, query, PromptTemplateManager.get_meaning_based_chunk_prompt())
+            summary = rag_service.execute_llm_chain(context, query, PromptTemplateManager.get_meaning_based_chunk_prompt())
             summary_list = json.loads(summary)
             if isinstance(summary_list, list):
                 break

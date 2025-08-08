@@ -12,6 +12,7 @@ from domain.report.service.report_producer import ReportProducer
 from core.kafka.kafka_broker import kafka_broker
 from domain.video.repository.video_repository import VideoRepository
 from external.rag.rag_service import RagService
+from external.rag.rag_service_impl import RagServiceImpl
 from response.api_response import ApiResponse
 from response.code.status.success_status import SuccessStatus
 
@@ -27,7 +28,7 @@ task_repository = TaskRepository()
 kafka_config = KafkaConfig()
 report_producer = ReportProducer(kafka_broker, kafka_config)
 
-rag_service = RagService()
+rag_service = RagServiceImpl()
 logger = logging.getLogger(__name__)
 video_repository = VideoRepository()
 channel_repository = ChannelRepository()

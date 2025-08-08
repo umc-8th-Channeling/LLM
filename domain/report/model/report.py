@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import Optional
-from sqlmodel import SQLModel, Field
+from sqlmodel import SQLModel, Field, Column
+from sqlalchemy import Text
 
 
 class Report(SQLModel, table=True):
@@ -35,7 +36,7 @@ class Report(SQLModel, table=True):
     revisit: int = Field(description="재방문률")
     
     # 텍스트 분석
-    summary: str = Field(description="요약본")
+    summary: str = Field(sa_column=Column(Text), description="요약본")
     
     # 댓글 감정 분석
     neutral_comment: int = Field(description="중립 댓글 수")
@@ -44,8 +45,8 @@ class Report(SQLModel, table=True):
     negative_comment: int = Field(description="부정 댓글 수")
     
     # 분석 결과
-    leave_analyze: str = Field(description="시청자 이탈 분석")
-    optimization: str = Field(description="알고리즘 최적화")
+    leave_analyze: str = Field(sa_column=Column(Text), description="시청자 이탈 분석")
+    optimization: str = Field(sa_column=Column(Text), description="알고리즘 최적화")
     
     # BaseEntity 상속 부분 (created_at, updated_at)
     created_at: Optional[datetime] = Field(default_factory=datetime.utcnow)

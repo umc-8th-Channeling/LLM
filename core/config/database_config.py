@@ -38,7 +38,7 @@ else:
 # MySQL 엔진
 mysql_engine = create_async_engine(
     MYSQL_DATABASE_URL,
-    echo=True,  # SQL 쿼리 로그 출력 (개발용)
+    echo=False,  # SQL 쿼리 로그 출력 비활성화
     pool_pre_ping=True,  # 연결 상태 체크
     pool_recycle=300,  # 연결 재사용 시간 (5분)
 )
@@ -46,7 +46,7 @@ mysql_engine = create_async_engine(
 # PostgreSQL 엔진
 pg_engine = create_async_engine(
     PG_DATABASE_URL,
-    echo=True,  # SQL 쿼리 로그 출력 (개발용)
+    echo=False,  # SQL 쿼리 로그 출력 비활성화
     pool_pre_ping=True,  # 연결 상태 체크
     pool_recycle=300,  # 연결 재사용 시간 (5분)
 )
