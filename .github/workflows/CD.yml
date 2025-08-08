@@ -62,16 +62,21 @@ jobs:
       - name: Deploy fastapi-app
         working-directory: deploy-configs
         env:
+          # MySQL
           MYSQL_HOST: ${{ secrets.MYSQL_HOST }}
           MYSQL_PORT: "3306"
           MYSQL_DATABASE: ${{ secrets.MYSQL_DATABASE }}
           MYSQL_USER: ${{ secrets.MYSQL_USER }}
           MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
+
+          # PostgreSQL
           PG_HOST: ${{ secrets.PG_HOST }}
           PG_PORT: "5432"
           PG_DATABASE: ${{ secrets.PG_DATABASE }}
           PG_USER: ${{ secrets.PG_USER }}
           PG_PASSWORD: ${{ secrets.PG_PASSWORD }}
+
+          # API Keys
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
@@ -83,16 +88,21 @@ jobs:
       - name: Deploy kafka-consumer
         working-directory: deploy-configs
         env:
+          # MySQL
           MYSQL_HOST: ${{ secrets.MYSQL_HOST }}
           MYSQL_PORT: "3306"
           MYSQL_DATABASE: ${{ secrets.MYSQL_DATABASE }}
           MYSQL_USER: ${{ secrets.MYSQL_USER }}
           MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
+
+          # PostgreSQL
           PG_HOST: ${{ secrets.PG_HOST }}
           PG_PORT: "5432"
           PG_DATABASE: ${{ secrets.PG_DATABASE }}
           PG_USER: ${{ secrets.PG_USER }}
           PG_PASSWORD: ${{ secrets.PG_PASSWORD }}
+
+          # API Keys
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
