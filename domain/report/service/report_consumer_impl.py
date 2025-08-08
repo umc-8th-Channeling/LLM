@@ -3,6 +3,7 @@ from typing import Any, Dict, Optional, Tuple
 import time
 import json
 import logging
+import asyncio
 
 from core.enums.avg_type import AvgType
 from domain.comment.service.comment_service import CommentService
@@ -204,9 +205,70 @@ class ReportConsumerImpl(ReportConsumer):
                 return
             
             report, video = result
+            
+            # analyze_leave 호출 전 video 객체 상태 로깅
+            logger.info(f"[DEBUG] analyze_leave 호출 전 - video 객체 타입: {type(video)}")
+            logger.info(f"[DEBUG] analyze_leave 호출 전 - video.id: {getattr(video, 'id', 'None')}")
+            logger.info(f"[DEBUG] analyze_leave 호출 전 - video.youtube_video_id: {getattr(video, 'youtube_video_id', 'None')}")
+            logger.info(f"[DEBUG] analyze_leave 호출 전 - video 전체 속성: {vars(video) if hasattr(video, '__dict__') else 'No __dict__'}")
 
-            # 시청자 이탈 분석
-            leave_result = await leave_analyize.analyze_leave(video)
+            # 시청자 이탈 분석 (재시도 로직 포함)
+            leave_result = None
+            max_retries = 3
+            retry_count = 0
+            
+            while retry_count < max_retries:
+                try:
+                    logger.info(f"[DEBUG] leave_analyize.analyze_leave 함수 호출 시작 (시도 {retry_count + 1}/{max_retries})")
+                    leave_result = await leave_analyize.analyze_leave(video)
+                    logger.info(f"[DEBUG] leave_analyize.analyze_leave 함수 호출 성공")
+                    logger.info(f"[DEBUG] leave_result 타입: {type(leave_result)}")
+                    logger.info(f"[DEBUG] leave_result 내용: {leave_result}")
+                    break  # 성공하면 루프 종료
+                    
+                except AttributeError as ae:
+                    logger.error(f"[ERROR] analyze_leave AttributeError 발생: {ae}")
+                    logger.error(f"[ERROR] AttributeError 상세: {ae.__class__.__name__}: {str(ae)}")
+                    raise
+                    
+                except TypeError as te:
+                    logger.error(f"[ERROR] analyze_leave TypeError 발생: {te}")
+                    logger.error(f"[ERROR] TypeError 상세: {te.__class__.__name__}: {str(te)}")
+                    raise
+                    
+                except KeyError as ke:
+                    logger.error(f"[ERROR] analyze_leave KeyError 발생: {ke}")
+                    logger.error(f"[ERROR] KeyError 상세: {ke.__class__.__name__}: {str(ke)}")
+                    raise
+                    
+                except Exception as e:
+                    error_type = e.__class__.__name__
+                    logger.error(f"[ERROR] analyze_leave 오류 발생 (시도 {retry_count + 1}/{max_retries}): {e}")
+                    logger.error(f"[ERROR] 오류 타입: {error_type}")
+                    logger.error(f"[ERROR] 오류 상세: {str(e)}")
+                    
+                    # ConnectTimeout이나 네트워크 관련 에러인 경우 재시도
+                    if error_type in ['ConnectTimeout', 'ReadTimeout', 'ConnectionError', 'TimeoutError']:
+                        retry_count += 1
+                        if retry_count < max_retries:
+                            wait_time = retry_count * 5  # 5초, 10초, 15초 대기
+                            logger.warning(f"[WARNING] 네트워크 타임아웃 발생. {wait_time}초 후 재시도합니다...")
+                            await asyncio.sleep(wait_time)
+                            continue
+                        else:
+                            logger.error(f"[ERROR] 최대 재시도 횟수 {max_retries}회 초과")
+                            import traceback
+                            logger.error(f"[ERROR] 최종 스택 트레이스:\n{traceback.format_exc()}")
+                            # 타임아웃 시 기본값 설정
+                            leave_result = "시청자 이탈 분석 실패 (네트워크 타임아웃)"
+                            logger.warning(f"[WARNING] 기본값으로 설정: {leave_result}")
+                            break
+                    else:
+                        # 네트워크 에러가 아닌 경우 즉시 종료
+                        import traceback
+                        logger.error(f"[ERROR] 스택 트레이스:\n{traceback.format_exc()}")
+                        raise
+            
             logger.info(f"시청자 이탈 분석 결과: {leave_result}")
 
             # 벡터 DB에 저장
