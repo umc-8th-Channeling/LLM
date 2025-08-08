@@ -4,6 +4,7 @@ import time
 import json
 import logging
 
+from core.enums.avg_type import AvgType
 from domain.comment.service.comment_service import CommentService
 from domain.channel.repository.channel_repository import ChannelRepository
 from domain.content_chunk.repository.content_chunk_repository import ContentChunkRepository
@@ -134,15 +135,25 @@ class ReportConsumerImpl(ReportConsumer):
 
             # 수치 정보 조회
             video_service = VideoService()
+
+            avg_dic = await video_service.get_rating_avg(video)
             concept = await video_service.analyze_consistency(video)
             seo = await video_service.analyze_seo(video)
             revisit = await video_service.analyze_revisit(video)
-            logger.info(f"일관성 : {concept}")
-            logger.info(f"seo : {seo}")
-            logger.info(f"재방문률 : {revisit}")
-            logger.info(f"조회수 : {video.view}")
-            logger.info(f"좋아요 : {video.like_count}")
-            logger.info(f"댓글 : {video.comment_count}")
+
+            print(f"조회수 : {video.view}")
+            print(f"조회수평균-채널 : {avg_dic['view_avg']}")
+            print(f"조회수평균-토픽 : {avg_dic['view_category_avg']}")
+            print(f"좋아요 : {video.like_count}")
+            print(f"좋아요평균-토픽 : {avg_dic['like_avg']}")
+            print(f"좋아요평균-채널 : {avg_dic['like_category_avg']}")
+            print(f"댓글 : {video.comment_count}")
+            print(f"댓글평균-토픽 : {avg_dic['comment_avg']}")
+            print(f"댓글평균-채널 : {avg_dic['comment_category_avg']}")
+
+            print(f"일관성 : {concept}")
+            print(f"seo : {seo}")
+            print(f"재방문률 : {revisit}")
 
             # 요약 정보 업데이트
             await self.report_repository.save({

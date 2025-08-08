@@ -50,9 +50,9 @@ async def create_report(video_id: int):
     
     # task 생성
     task_data = {
-        "report_id": report.id, 
-        "overview_status": Status.PENDING, 
-        "analysis_status": Status.PENDING, 
+        "report_id": report.id,
+        "overview_status": Status.PENDING,
+        "analysis_status": Status.PENDING,
         "idea_status": Status.PENDING
         }
     task = await task_repository.save(data=task_data)
@@ -79,8 +79,8 @@ async def create_report(video_id: int):
 
     # 메시지 발행
     await report_producer.send_message("overview-topic", overview_message)
-    await report_producer.send_message("analysis-topic", analysis_message)
-    await report_producer.send_message("idea-topic", idea_message)
+    # await report_producer.send_message("analysis-topic", analysis_message)
+    # await report_producer.send_message("idea-topic", idea_message)
 
     return ApiResponse.on_success(SuccessStatus._OK, {"task_id": task.id})
 
