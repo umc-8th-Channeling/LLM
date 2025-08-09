@@ -47,7 +47,7 @@ jobs:
       # 5. 필요한 패키지 설치
       - name: Install dependencies
         run: |
-          pip install google-generativeai PyGithub
+          pip install -r deploy-configs/scripts/requirements.txt
 
       # 6. Gemini 리뷰 실행
       - name: Run Gemini Review
