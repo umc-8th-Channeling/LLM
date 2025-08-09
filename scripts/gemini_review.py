@@ -77,7 +77,7 @@ class GeminiPRReviewer:
     def create_review_prompt(self, pr_info: Dict[str, Any]) -> str:
         """Gemini에게 보낼 리뷰 프롬프트 생성"""
         prompt = f"""
-You are an experienced code reviewer. Please review the following Pull Request and provide constructive feedback.
+You are an experienced senior developer reviewing code. Focus on providing actionable, constructive feedback.
 
 **PR Title:** {pr_info['title']}
 **PR Description:** {pr_info['body']}
@@ -94,16 +94,41 @@ You are an experienced code reviewer. Please review the following Pull Request a
         
         prompt += """
 
-Please provide a code review with the following structure:
+Please provide a thorough code review following this structure:
 
-1. **Overall Assessment**: Brief summary of the changes
-2. **Strengths**: What's done well
-3. **Issues Found**: Any bugs, potential issues, or concerns (if any)
-4. **Suggestions**: Improvements or recommendations
-5. **Security Check**: Any security concerns (if applicable)
+## 📊 전체 평가
+한 단락으로 변경사항의 목적과 영향을 요약
 
-Use Korean for your response. Be constructive and specific. If the code looks good, say so.
-Format your response in Markdown.
+## ✅ 잘한 점
+- 코드 품질이나 구현에서 좋은 부분들
+- 베스트 프랙티스를 잘 따른 부분
+
+## 🔍 발견된 이슈
+각 이슈에 대해:
+- **[심각도: 🚨심각/🔴높음/🟡중간/🟢낮음]** 이슈 제목
+- 구체적인 문제 설명
+- 해결 방법 제안 (코드 예시 포함 가능)
+
+심각도 기준:
+- 🚨 **심각(Critical)**: 보안 취약점, 데이터 손실, 시스템 다운 가능성
+- 🔴 **높음(High)**: 주요 기능 오류, 성능 심각 저하
+- 🟡 **중간(Medium)**: 부분적 기능 오류, 개선 필요
+- 🟢 **낮음(Low)**: 코드 스타일, 사소한 개선사항
+
+## 💡 개선 제안
+- 성능 최적화 기회
+- 코드 가독성 개선
+- 리팩토링 제안
+
+## ✨ 추가 고려사항
+- 성능 영향
+
+**응답 규칙:**
+- 한국어로 작성
+- 구체적이고 실행 가능한 피드백 제공
+- 이슈가 없으면 "문제없음" 명시
+- 코드 예시는 ```언어명 으로 포맷팅
+- 리뷰를 받는 사람은 신입 개발자임을 인지하면서 긍정적이고 친절한 톤 유지하되 문제는 명확히 지적
 """
         
         return prompt
