@@ -35,25 +35,27 @@ jobs:
         with:
           python-version: '3.12.1'
       
-      # 4. 필요한 패키지 설치
+      # 4. 의존성 캐시 설정
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('deploy-configs/scripts/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+      
+      # 5. 필요한 패키지 설치
       - name: Install dependencies
         run: |
-          pip install google-generativeai
-          pip install PyGithub
-      
-      # 5. PR 정보 가져오기
-      - name: Get PR Info
-        id: pr-info
-        run: |
-          echo "pr_number=${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
-          echo "base_sha=${{ github.event.pull_request.base.sha }}" >> $GITHUB_OUTPUT
-          echo "head_sha=${{ github.event.pull_request.head.sha }}" >> $GITHUB_OUTPUT
-      
+          pip install google-generativeai PyGithub
+
       # 6. Gemini 리뷰 실행
       - name: Run Gemini Review
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ steps.pr-info.outputs.pr_number }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           python deploy-configs/scripts/gemini_review.py
