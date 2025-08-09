@@ -1,8 +1,10 @@
 import os
 import sys
 import json
+import time
 import google.generativeai as genai
 from github import Github
+from github.GithubException import RateLimitExceededException
 from typing import List, Dict, Any
 
 
@@ -11,6 +13,12 @@ class GeminiPRReviewer:
         self.gemini_api_key = os.environ.get('GEMINI_API_KEY')
         self.github_token = os.environ.get('GITHUB_TOKEN')
         self.pr_number = int(os.environ.get('PR_NUMBER', 0))
+        
+        # 파일 필터링 설정
+        self.skip_extensions = ['.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico', 
+                               '.pdf', '.zip', '.tar', '.gz', '.rar',
+                               '.exe', '.dll', '.so', '.dylib',
+                               '.lock', '.sum', '.mod']
         
         if not self.gemini_api_key:
             raise ValueError("GEMINI_API_KEY가 설정되지 않았습니다")
@@ -36,34 +44,63 @@ class GeminiPRReviewer:
             raise ValueError("GITHUB_REPOSITORY가 설정되지 않았습니다")
         return self.github.get_repo(repo_name)
     
+    def should_review_file(self, filename: str) -> bool:
+        """파일이 리뷰 대상인지 확인"""
+        # 확장자 체크만 수행
+        for ext in self.skip_extensions:
+            if filename.lower().endswith(ext):
+                return False
+        return True
+    
     def get_pr_diff(self) -> Dict[str, Any]:
         """PR의 변경사항 가져오기"""
         files_changed = []
         total_additions = 0
         total_deletions = 0
+        skipped_files = []
         
-        # PR의 파일 변경사항 가져오기
-        for file in self.pr.get_files():
-            # 파일 크기 제한 (너무 큰 파일은 스킵)
-            if file.additions + file.deletions > 500:
-                files_changed.append({
-                    'filename': file.filename,
-                    'status': file.status,
-                    'additions': file.additions,
-                    'deletions': file.deletions,
-                    'patch': f"[파일이 너무 큼: 추가 {file.additions}줄, 삭제 {file.deletions}줄]"
-                })
-            else:
-                files_changed.append({
-                    'filename': file.filename,
-                    'status': file.status,
-                    'additions': file.additions,
-                    'deletions': file.deletions,
-                    'patch': file.patch if hasattr(file, 'patch') and file.patch else ''
-                })
-            
-            total_additions += file.additions
-            total_deletions += file.deletions
+        try:
+            # PR의 파일 변경사항 가져오기
+            for file in self.pr.get_files():
+                # 리뷰 대상이 아닌 파일 스킵
+                if not self.should_review_file(file.filename):
+                    skipped_files.append(file.filename)
+                    continue
+                
+                # 파일 크기 제한 (너무 큰 파일은 스킵)
+                if file.additions + file.deletions > 500:
+                    files_changed.append({
+                        'filename': file.filename,
+                        'status': file.status,
+                        'additions': file.additions,
+                        'deletions': file.deletions,
+                        'patch': f"[파일이 너무 큼: 추가 {file.additions}줄, 삭제 {file.deletions}줄]"
+                    })
+                else:
+                    files_changed.append({
+                        'filename': file.filename,
+                        'status': file.status,
+                        'additions': file.additions,
+                        'deletions': file.deletions,
+                        'patch': file.patch if hasattr(file, 'patch') and file.patch else ''
+                    })
+                
+                total_additions += file.additions
+                total_deletions += file.deletions
+                
+        except RateLimitExceededException as e:
+            print(f"⚠️ GitHub API 한도 초과. 재시도까지 {e.reset_time - time.time():.0f}초 대기 중...")
+            time.sleep(max(e.reset_time - time.time() + 1, 60))
+            # 재귀 호출로 재시도
+            return self.get_pr_diff()
+        except Exception as e:
+            print(f"❌ PR 정보 가져오기 실패: {str(e)}")
+            raise
+        
+        # 스킵된 파일 정보 출력
+        if skipped_files:
+            print(f"📝 리뷰 제외 파일 ({len(skipped_files)}개): {', '.join(skipped_files[:5])}" + 
+                  (f" 외 {len(skipped_files)-5}개" if len(skipped_files) > 5 else ""))
         
         return {
             'title': self.pr.title,
@@ -71,7 +108,8 @@ class GeminiPRReviewer:
             'files_changed': files_changed,
             'total_additions': total_additions,
             'total_deletions': total_deletions,
-            'num_files': len(files_changed)
+            'num_files': len(files_changed),
+            'skipped_files': skipped_files
         }
     
     def create_review_prompt(self, pr_info: Dict[str, Any]) -> str:
@@ -160,6 +198,17 @@ Please provide a thorough code review following this structure:
         try:
             print(f"📋 PR #{self.pr_number} 정보를 가져오는 중...")
             pr_info = self.get_pr_diff()
+            
+            # 리뷰할 파일이 없으면 스킵
+            if not pr_info['files_changed']:
+                print("ℹ️ 리뷰할 파일이 없습니다 (모든 파일이 제외됨)")
+                if pr_info['skipped_files']:
+                    self.post_review_comment(
+                        f"ℹ️ 모든 파일이 리뷰 대상에서 제외되었습니다.\n\n"
+                        f"제외된 파일: {', '.join(pr_info['skipped_files'][:10])}"
+                        + (f" 외 {len(pr_info['skipped_files'])-10}개" if len(pr_info['skipped_files']) > 10 else "")
+                    )
+                return
             
             # 변경사항이 너무 크면 스킵
             if pr_info['total_additions'] + pr_info['total_deletions'] > 2000:
