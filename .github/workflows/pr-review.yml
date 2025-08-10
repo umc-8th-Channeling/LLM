@@ -1,0 +1,61 @@
+name: PR Auto Review with Gemini
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: 
+      - develop
+
+permissions:
+  contents: read
+  pull-requests: write  # PR에 코멘트 작성 권한
+
+jobs:
+  gemini-review:
+    runs-on: ubuntu-latest
+    
+    steps:
+      # 1. 코드 체크아웃
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # 전체 히스토리 (diff 계산용)
+      
+      # 2. DEPLOY-CONFIGS 레포지토리에서 스크립트 가져오기
+      - name: Checkout deploy-configs repository
+        uses: actions/checkout@v4
+        with:
+          repository: umc-8th-Channeling/DEPLOY-CONFIGS
+          path: deploy-configs
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      # 3. Python 환경 설정 (3.12.1)
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12.1'
+      
+      # 4. 의존성 캐시 설정
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('deploy-configs/scripts/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+      
+      # 5. 필요한 패키지 설치
+      - name: Install dependencies
+        run: |
+          pip install -r deploy-configs/scripts/requirements.txt
+
+      # 6. Gemini 리뷰 실행
+      - name: Run Gemini Review
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          python deploy-configs/scripts/gemini_review.py
