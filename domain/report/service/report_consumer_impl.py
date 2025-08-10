@@ -206,6 +206,9 @@ class ReportConsumerImpl(ReportConsumer):
             
             report, video = result
             
+            # 구글 액세스 토큰 추출
+            token = message.get("google_access_token")
+
             # analyze_leave 호출 전 video 객체 상태 로깅
             logger.info(f"[DEBUG] analyze_leave 호출 전 - video 객체 타입: {type(video)}")
             logger.info(f"[DEBUG] analyze_leave 호출 전 - video.id: {getattr(video, 'id', 'None')}")
@@ -220,7 +223,7 @@ class ReportConsumerImpl(ReportConsumer):
             while retry_count < max_retries:
                 try:
                     logger.info(f"[DEBUG] leave_analyize.analyze_leave 함수 호출 시작 (시도 {retry_count + 1}/{max_retries})")
-                    leave_result = await leave_analyize.analyze_leave(video)
+                    leave_result = await leave_analyize.analyze_leave(video, token)
                     logger.info(f"[DEBUG] leave_analyize.analyze_leave 함수 호출 성공")
                     logger.info(f"[DEBUG] leave_result 타입: {type(leave_result)}")
                     logger.info(f"[DEBUG] leave_result 내용: {leave_result}")
