@@ -1,5 +1,6 @@
 
 from fastapi import APIRouter
+from pydantic import BaseModel
 from core.config.kafka_config import KafkaConfig
 from domain.channel.repository.channel_repository import ChannelRepository
 from domain.idea.repository.idea_repository import IdeaRepository
@@ -20,6 +21,9 @@ from domain.video.service.video_service import VideoService
 
 import logging
 
+# Request Body Model
+class CreateReportRequest(BaseModel):
+    googleAccessToken: str
 
 router = APIRouter(prefix="/reports", tags=["reports"])
 
@@ -35,14 +39,18 @@ channel_repository = ChannelRepository()
 idea_repository = IdeaRepository()
 
 @router.post("")
-async def create_report(video_id: int):
+async def create_report(video_id: int, request: CreateReportRequest):
     """
     리포트 생성을 시작합니다.
     parameters:
         video_id: int - 리포트에 대한 영상 ID
+        request: CreateReportRequest - Google Access Token을 포함한 요청 body
     returns:
         task_id: int
     """
+    # Google Access Token 로깅 (디버깅용)
+    logger.info(f"Received Google Access Token: {request.googleAccessToken[:20]}...")  # 토큰의 일부만 로깅
+    
     # report 생성
     report_data = {"video_id": video_id}
     report = await report_repository.save(data=report_data)
@@ -68,7 +76,8 @@ async def create_report(video_id: int):
     analysis_message = Message(
         task_id=task.id,
         report_id=report.id,
-        step=Step.analysis
+        step=Step.analysis,
+        google_access_token=request.googleAccessToken
     )
 
     idea_message = Message(
