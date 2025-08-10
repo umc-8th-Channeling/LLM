@@ -1,3 +1,4 @@
+import logging
 import os
 
 from googleapiclient.discovery import build, logger
@@ -73,11 +74,8 @@ class YoutubeCommentService:
                 chart='mostPopular',
                 videoCategoryId=category_id,
                 regionCode=region_code,
-                maxResults=3
+                maxResults=10
             ).execute()
-
-            logger.info("유튜브 원본")
-            logger.info(response)
 
             videos = []
             for item in response['items']:
@@ -89,14 +87,15 @@ class YoutubeCommentService:
                 }
                 videos.append(video)
 
+            logging.info(f"유튜브 카테고리별 인기 동영상 원본 데이터: {videos}")
             return videos
 
         except HttpError as e:
             if e.resp.status == 403:
                 logger.error("YouTube API quota exceeded")
             else:
-                logger.error(f"HTTP error occurred: {e}")
+                logger.error(f"HTTP error occurred: {e!r}")
             raise
         except Exception as e:
-            logger.error(f"Unexpected error in get_category_benchmarks: {e}")
+            logger.error(f"Unexpected error in get_category_benchmarks: {e!r}")
             raise

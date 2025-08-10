@@ -65,60 +65,57 @@ class RagServiceImpl(RagService):
         return contents
 
     async def analyze_idea(self, video: Video, channel: Channel) -> List[Dict[str, Any]]:
-        # 필요한 데이터
-        # 1. 내 채널, 내 영상
-        origin_context = f"""
-        - 분석 채널명: {channel.name}
-        - 채널 컨셉: {channel.concept}
-        - 타겟 시청자: {channel.target}
-        - 분석 영상 제목: {video.title}
-        - 분석 영상 설명: {video.description}
-        """
-        logging.info("분석 기반 데이터(Origin) 생성 완료")
-
-        # 2. 인기 동영상 목록 유튜브 호출
-        category_id = "0"  # TODO 카테고리가 없을 수 있는지 확인 (youtube api 내 기본값이 0)
-        popular_videos = self.youtube_comment_service.get_category_popular(category_id)
-        logging.info(f"카테고리 '{category_id}'의 인기 영상 {len(popular_videos)}개 조회 완료")
-
-        # 3. 텍스트로 변환하여 Vector DB에 저장
-        for popular in popular_videos:
-            pop_video_text = f"""제목: {popular['video_title']}, 설명: {popular['video_description']},태그: {popular['video_hash_tag']},채널명: {popular['channel_title']}"""
-            await self.content_chunk_repository.save_context(
-                source_type=SourceTypeEnum.IDEA_RECOMMENDATION,
-                source_id=video.id,
-                context=pop_video_text)
-        logging.info("인기 영상 정보 Vector DB 저장 완료")
-
-        # 4. 영상과 의미적으로 가장 유사한 '인기 영상' 청크를 검색
-        query_text = f"제목: {video.title}, 설명: {video.description}, 채널명: {channel.name}"
-        video_embedding = await self.content_chunk_repository.generate_embedding(query_text)
-        meta_data = {"query_embedding": str(video_embedding)}
-
-        similar_chunks = await self.content_chunk_repository.search_similar_test(
-            SourceTypeEnum.IDEA_RECOMMENDATION, metadata=meta_data, limit=5
-        )
-        logging.info(f"유사도 높은 인기 영상 청크 {len(similar_chunks)}개 검색 완료")
-
-        # 5. 검색된 청크(내용)를 텍스트로
-        popularity_context = "\n".join([chunk.get("content", "") for chunk in similar_chunks])
-
-        # TODO _execute_llm_chain
-        chain = PromptTemplateManager.get_idea_prompt | self.llm
-        result_str = await chain.ainvoke({
-            "context": origin_context,
-            "input": popularity_context
-        })
-
-        logging.info(f"LLM 아이디어 생성 결과: {result_str.content}")
-
-        # LLM의 응답 문자열을 JSON 파싱
         try:
+            # 1. 내 채널, 내 영상
+            origin_context = f"""
+            - 분석 영상 제목: {video.title}
+            - 분석 영상 설명: {video.description}
+            - 분석 영상 카테고리 : {video.video_category.name}
+            - 채널명: {channel.name}
+            - 채널 컨셉: {channel.concept}
+            - 타겟 시청자: {channel.target}
+            """
+            logging.info("아이디어 내 채널 확인 : %s", origin_context)
+            logging.info("아이디어 카테고리 확인 : %s", video.video_category.value)
+
+            # 2. 인기 동영상 목록 유튜브 호출
+            category_id = video.video_category.value
+            popular_videos = self.youtube_comment_service.get_category_popular(category_id)
+
+            # 3. 텍스트로 변환하여 Vector DB에 저장
+            for popular in popular_videos:
+                pop_video_text = f"""제목: {popular['video_title']}, 설명: {popular['video_description']},태그: {popular['video_hash_tag']}"""
+                await self.content_chunk_repository.save_context(
+                    source_type=SourceTypeEnum.IDEA_RECOMMENDATION,
+                    source_id=video.id,
+                    context=pop_video_text)
+
+            # 4. 영상과 의미적으로 가장 유사한 '인기 영상' 청크를 검색
+            query_text = f"제목: {video.title}, 설명: {video.description}, 카테고리: {video.video_category.name}"
+            video_embedding = await self.content_chunk_repository.generate_embedding(query_text)
+            meta_data = {"query_embedding": str(video_embedding)}
+
+            similar_chunks = await self.content_chunk_repository.search_similar_test(
+                SourceTypeEnum.IDEA_RECOMMENDATION, metadata=meta_data, limit=5
+            )
+
+            # 5. 검색된 청크(내용)를 텍스트로
+            popularity_context = "\n".join([chunk.get("content", "") for chunk in similar_chunks])
+
+            # 프롬프트 생성 및 LLM 실행
+            chain = PromptTemplateManager.get_idea_prompt | self.llm
+            result_str = await chain.ainvoke({
+                "context": origin_context,
+                "input": popularity_context
+            })
+
+            # LLM의 응답 문자열을 JSON 파싱
             clean_json_str = result_str.content.strip().replace("```json", "").replace("```", "")
             return json.loads(clean_json_str)
-        except json.JSONDecodeError:
-            logging.error("LLM 응답을 JSON으로 파싱하는 데 실패했습니다.")
-            return []
+        except Exception as e:
+            logger.error(f"알고리즘 최적화 분석 중 오류 발생: {e!r}")
+            raise e
+
     
     def analyze_algorithm_optimization(self, video_id: str) -> str:
         """
@@ -215,7 +212,8 @@ class RagServiceImpl(RagService):
         )
         
         try:
-            result = json.loads(result_str)
+            clean_json_str = result_str.strip().replace("```json", "").replace("```", "")
+            result = json.loads(clean_json_str)
             return result
         except json.JSONDecodeError:
             return {"error": "결과 파싱 오류", "raw_result": result_str}
