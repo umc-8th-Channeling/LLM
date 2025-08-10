@@ -1,6 +1,7 @@
 from external.rag.rag_service import RagService
 from external.youtube.transcript_service import TranscriptService
 from external.youtube.video_detail_service import VideoDetailService
+from external.youtube.youtube_video_service import VideoService
 from external.youtube.youtube_comment_service import YoutubeCommentService
 from domain.content_chunk.repository.content_chunk_repository import ContentChunkRepository
 from domain.video.model.video import Video
@@ -29,6 +30,7 @@ class RagServiceImpl(RagService):
         self.youtube_comment_service = YoutubeCommentService()
         self.content_chunk_repository = ContentChunkRepository()
         self.trend_service = TrendService()
+        self.youtube_video_service = VideoService()
         self.llm = ChatOpenAI(model="gpt-4o-mini")
     
     def summarize_video(self, video_id: str) -> str:
@@ -80,7 +82,7 @@ class RagServiceImpl(RagService):
 
             # 2. 인기 동영상 목록 유튜브 호출
             category_id = video.video_category.value
-            popular_videos = self.youtube_comment_service.get_category_popular(category_id)
+            popular_videos = self.video_detail_service.get_category_popular(category_id)
 
             # 3. 텍스트로 변환하여 Vector DB에 저장
             for popular in popular_videos:
