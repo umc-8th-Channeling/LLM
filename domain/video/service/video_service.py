@@ -34,7 +34,7 @@ class VideoService:
             "average_view_duration": google_result[1],  # 평균시청길이
             "likes": google_result[2],  # 좋아요수
             "shares": google_result[3],  # 공유수
-            "subscribers_gained": google_result[3],  # 구독증가율
+            "subscribers_gained": google_result[4],  # 구독증가율
         }
 
         concept = await self._analyze_consistency(video) # 유사도

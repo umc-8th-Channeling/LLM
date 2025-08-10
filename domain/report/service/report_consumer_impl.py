@@ -392,7 +392,7 @@ class ReportConsumerImpl(ReportConsumer):
                 logger.info(f"{len(saved_channel)}개의 채널 맞춤형 키워드를 MySQL에 저장했습니다.")
 
             # 아이디어 분석 요청
-            await self.idea_service.create_idea(video, channel)
+            await self.idea_service.create_idea(video, channel, report_id)
 
             # task 업데이트
             task = await self.task_repository.find_by_id(message["task_id"])
