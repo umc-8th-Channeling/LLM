@@ -73,7 +73,9 @@ async def analyze_leave(video: Video, token: str) -> str:
 
         # 4. 영상 분석 결과 가져오기 (analytics)
         logger.info("YouTube Analytics 데이터 가져오는 중...")
-        analytics_data = await analyticsServcie.get_youtube_analytics_data(token, youtube_video_id)
+        metrics = "audienceWatchRatio,relativeRetentionPerformance"
+        dimensions = "elapsedVideoTimeRatio"
+        analytics_data = await analyticsServcie.get_youtube_analytics_data(token, youtube_video_id, metrics, dimensions)
         if not analytics_data or "rows" not in analytics_data:
             logger.warning("Analytics 데이터를 가져올 수 없습니다. 기본값 사용.")
             analytics_data = {"rows": []}

@@ -21,6 +21,7 @@ from domain.video.repository.video_repository import VideoRepository
 from domain.video.service.video_service import VideoService
 from external.rag import leave_analyize
 from external.rag.rag_service_impl import RagServiceImpl
+from external.youtube.youtube_comment_service import YoutubeCommentService
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +38,8 @@ class ReportConsumerImpl(ReportConsumer):
         self.report_service = ReportService()
         self.trend_keyword_repository = TrendKeywordRepository()
         self.idea_service = IdeaService()
+        self.youtube_comment_service = YoutubeCommentService()
+        self.video_service = VideoService()
  
 
     async def _get_report_and_video(self, message: Dict[str, Any]) -> Optional[Tuple[Any, Any]]:
@@ -131,26 +134,9 @@ class ReportConsumerImpl(ReportConsumer):
             await self.report_service.update_report_emotion_counts(report_id, summarized_comments)
 
             # 수치 정보 조회
-            video_service = VideoService()
-
-            avg_dic = await video_service.get_rating_avg(video)
-            concept = await video_service.analyze_consistency(video)
-            seo = await video_service.analyze_seo(video)
-            revisit = await video_service.analyze_revisit(video)
-
-            logger.info(f"조회수 : {video.view}")
-            logger.info(f"조회수평균-채널 : {avg_dic['view_avg']}")
-            logger.info(f"조회수평균-토픽 : {avg_dic['view_category_avg']}")
-            logger.info(f"좋아요 : {video.like_count}")
-            logger.info(f"좋아요평균-토픽 : {avg_dic['like_avg']}")
-            logger.info(f"좋아요평균-채널 : {avg_dic['like_category_avg']}")
-            logger.info(f"댓글 : {video.comment_count}")
-            logger.info(f"댓글평균-토픽 : {avg_dic['comment_avg']}")
-            logger.info(f"댓글평균-채널 : {avg_dic['comment_category_avg']}")
-
-            logger.info(f"일관성 : {concept}")
-            logger.info(f"seo : {seo}")
-            logger.info(f"재방문률 : {revisit}")
+            token = message.get("google_access_token")
+            avg_dic = await self.video_service.get_overview_rating(video, token)
+            logger.info("영상 평가 정보:\n%s", avg_dic)
 
             # 요약 정보 업데이트
             await self.report_repository.save({
@@ -165,9 +151,9 @@ class ReportConsumerImpl(ReportConsumer):
                 "view" : video.view,
                 "view_channel_avg": avg_dic['view_avg'],
                 "view_topic_avg": avg_dic['view_category_avg'],
-                "concept" : concept,
-                "seo" : seo,
-                "revisit" : revisit,
+                "concept" : avg_dic['concept'],
+                "seo" : avg_dic['seo'],
+                "revisit" : avg_dic['revisit'],
             })
             logger.info("보고서 정보를 MYSQL DB에 저장했습니다.")
 
