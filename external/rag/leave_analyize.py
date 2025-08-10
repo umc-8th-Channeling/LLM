@@ -32,12 +32,6 @@ async def analyze_leave(video: Video, token: str) -> str:
 
 
         # 1. 영상, 채널 정보 가져오기
-
-        # 구글 엑세스 토큰
-        token = os.getenv("GOOGLE_ACCESS_TOKEN")
-        if not token:
-            logger.error("GOOGLE_ACCESS_TOKEN 환경변수가 설정되지 않았습니다.")
-            raise ValueError("Google Access Token이 필요합니다.")
         
         # 영상 가져오기
         youtube_video_id = video.youtube_video_id
@@ -59,7 +53,7 @@ async def analyze_leave(video: Video, token: str) -> str:
 
 
 
-# 2. 영상의 스크립트 가져오기
+        # 2. 영상의 스크립트 가져오기
         # 대본 스크립트 가져오기
         logger.info("영상 자막 데이터 가져오는 중...")
         context = transcript_service.get_structured_transcript(youtube_video_id)
@@ -138,11 +132,11 @@ async def analyze_leave(video: Video, token: str) -> str:
             "channel_hashtag" : channel.channel_hash_tag
         }
 
-    # 9. 1,8번에서 조회한 정보를 프롬프트에 넣기   
+        # 9. 1,8번에서 조회한 정보를 프롬프트에 넣기   
         prompt_template_str = PromptTemplateManager.get_viewer_escape_analysis_prompt()
         formatted_prompt = prompt_template_str.format(**context_data)  
     
-    # 10. LLM 직접 호출해서 결과 가져오기
+        # 10. LLM 직접 호출해서 결과 가져오기
         result = rag_service.execute_llm_direct(formatted_prompt)
         return result
 
