@@ -82,7 +82,7 @@ class RagServiceImpl(RagService):
 
             # 2. 인기 동영상 목록 유튜브 호출
             category_id = video.video_category.value
-            popular_videos = self.video_detail_service.get_category_popular(category_id)
+            popular_videos = self.youtube_video_service.get_category_popular(category_id)
 
             # 3. 텍스트로 변환하여 Vector DB에 저장
             for popular in popular_videos:
