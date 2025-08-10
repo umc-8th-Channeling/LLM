@@ -105,10 +105,12 @@ class RagServiceImpl(RagService):
             popularity_context = "\n".join([chunk.get("content", "") for chunk in similar_chunks])
 
             # 프롬프트 생성 및 LLM 실행
+            query = "트렌드 분석 후, 이 유튜브 영상과 관련된 새 컨텐츠에 대한 아이디어를 3개 생성해주세요."
             chain = PromptTemplateManager.get_idea_prompt | self.llm
             result_str = await chain.ainvoke({
-                "context": origin_context,
-                "input": popularity_context
+                "query": query,
+                "origin": origin_context,
+                "popularity": popularity_context
             })
 
             # LLM의 응답 문자열을 JSON 파싱
