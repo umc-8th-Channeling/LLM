@@ -70,7 +70,8 @@ async def create_report(video_id: int, request: CreateReportRequest):
     overview_message= Message(
         task_id=task.id,
         report_id=report.id,
-        step=Step.overview
+        step=Step.overview,
+        google_access_token=request.googleAccessToken
     )
 
     analysis_message = Message(

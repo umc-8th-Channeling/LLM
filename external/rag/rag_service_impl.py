@@ -66,23 +66,27 @@ class RagServiceImpl(RagService):
         contents = [item["content"] for item in result_list if isinstance(item, dict) and "content" in item]
         return contents
 
-    async def analyze_idea(self, video: Video, channel: Channel) -> List[Dict[str, Any]]:
+    async def analyze_idea(self, video: Video, channel: Channel, summary: str) -> List[Dict[str, Any]]:
         try:
+            # 0. 영상 내용 참고
+            sliced_summary = summary[:200]
+
             # 1. 내 채널, 내 영상
             origin_context = f"""
             - 분석 영상 제목: {video.title}
             - 분석 영상 설명: {video.description}
             - 분석 영상 카테고리 : {video.video_category.name}
             - 채널명: {channel.name}
-            - 채널 컨셉: {channel.concept}
+            - 컨셉: {channel.concept}
             - 타겟 시청자: {channel.target}
+            - 내용 : {sliced_summary}
             """
             logging.info("아이디어 내 채널 확인 : %s", origin_context)
-            logging.info("아이디어 카테고리 확인 : %s", video.video_category.value)
 
             # 2. 인기 동영상 목록 유튜브 호출
             category_id = video.video_category.value
             popular_videos = self.youtube_video_service.get_category_popular(category_id)
+            logging.info(f"아이디어 - 유튜브 인기 동영상 추출 완료")
 
             # 3. 텍스트로 변환하여 Vector DB에 저장
             for popular in popular_videos:

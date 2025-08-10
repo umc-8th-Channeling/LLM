@@ -219,7 +219,6 @@ class VideoService:
                 }
                 videos.append(video)
 
-            logging.info(f"유튜브 카테고리별 인기 동영상 원본 데이터: {videos}")
             return videos
 
         except HttpError as e:
