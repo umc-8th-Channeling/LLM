@@ -20,6 +20,7 @@ class TranscriptService:
                 proxy_username=self.proxy_username,
                 proxy_password=self.proxy_password,
                 filter_ip_locations=["kr", "us", "jp", "sg"]  # 아시아 지역으로 제한
+
             )
         )
 
