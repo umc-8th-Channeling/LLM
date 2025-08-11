@@ -23,10 +23,10 @@ class TranscriptService:
             )
         )
 
-    def fetch_transcript(self, video_id: str, languages=['ko', 'en']) -> list[dict]:
+    def fetch_transcript(self, video_id: str, languages=['ko', 'en']) -> list:
         """
-        공통: YouTubeTranscriptApi를 사용해 자막 리스트(dict) 반환
-        각 요소: {'text': str, 'start': float, 'duration': float}
+        공통: YouTubeTranscriptApi를 사용해 자막 리스트 반환
+        각 요소: FetchedTranscriptSnippet 객체 (text, start, duration 속성 포함)
         """
         try:
             transcript_list = self.ytt_api.list(video_id) # -> 가능한 자막의 언어 리스트
