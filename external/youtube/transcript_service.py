@@ -1,10 +1,27 @@
+import os
+from dotenv import load_dotenv
 from youtube_transcript_api import YouTubeTranscriptApi
+from youtube_transcript_api.proxies import WebshareProxyConfig
+
+# .env 파일 로드
+load_dotenv()
 
 class TranscriptService:
     """YouTube 자막 처리 서비스"""
 
     def __init__(self):
-        pass
+        # Webshare 프록시 설정
+        self.proxy_username = os.getenv("PROXY_USERNAME")
+        self.proxy_password = os.getenv("PROXY_PASSWORD")
+        
+        # 프록시 설정된 API 인스턴스 생성
+        self.ytt_api = YouTubeTranscriptApi(
+            proxy_config=WebshareProxyConfig(
+                proxy_username=self.proxy_username,
+                proxy_password=self.proxy_password,
+                filter_ip_locations=["kr", "us"]
+            )
+        )
 
     def fetch_transcript(self, video_id: str, languages=['ko', 'en']) -> list[dict]:
         """
@@ -12,9 +29,8 @@ class TranscriptService:
         각 요소: {'text': str, 'start': float, 'duration': float}
         """
         try:
-            ytt_api = YouTubeTranscriptApi()
-            transcript_list = ytt_api.list(video_id) # -> 가능한 자막의 언어 리스트
-            transcript = transcript_list.find_transcript(['ko', 'en']) # -> 기본으로 ko, en 
+            transcript_list = self.ytt_api.list(video_id) # -> 가능한 자막의 언어 리스트
+            transcript = transcript_list.find_transcript(languages) # -> 기본으로 ko, en 
             return transcript.fetch() #-> 가져오기
         except Exception as e:
             print(f"자막 불러오기 실패: {e}")
