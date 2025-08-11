@@ -80,6 +80,10 @@ jobs:
           SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
 
+          # Webshare Proxy
+          PROXY_USERNAME: ${{ secrets.PROXY_USERNAME }}
+          PROXY_PASSWORD: ${{ secrets.PROXY_PASSWORD }}
+
         run: |
           docker-compose up -d --no-deps fastapi-app
 
@@ -105,5 +109,10 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+
+          # Webshare Proxy
+          PROXY_USERNAME: ${{ secrets.PROXY_USERNAME }}
+          PROXY_PASSWORD: ${{ secrets.PROXY_PASSWORD }}
+
         run: |
           docker-compose up -d --no-deps kafka-consumer
