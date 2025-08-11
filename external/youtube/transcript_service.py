@@ -20,6 +20,7 @@ class TranscriptService:
                 proxy_username=self.proxy_username,
                 proxy_password=self.proxy_password,
                 # filter_ip_locations=["kr", "us"]
+
             )
         )
 
