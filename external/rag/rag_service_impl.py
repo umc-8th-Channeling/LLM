@@ -121,7 +121,7 @@ class RagServiceImpl(RagService):
             clean_json_str = result_str.content.strip().replace("```json", "").replace("```", "")
             return json.loads(clean_json_str)
         except Exception as e:
-            logger.error(f"알고리즘 최적화 분석 중 오류 발생: {e!r}")
+            logger.error(f"아이디어 생성 중 오류 발생: {e!r}")
             raise e
 
     
