@@ -182,12 +182,12 @@ class RagServiceImpl(RagService):
             raise e
             
 
-    def analyze_realtime_trends(self, limit: int = 6, geo: str = "KR") -> Dict:
+    def analyze_realtime_trends(self, limit: int = 5, geo: str = "KR") -> Dict:
         """
         실시간 트렌드를 분석하여 YouTube 콘텐츠에 적합한 형태로 반환
         
         Args:
-            limit: 분석할 트렌드 개수 (최대 6개)
+            limit: 분석할 트렌드 개수 (최대 5개)
             geo: 지역 코드 (기본값: KR)
             
         Returns:
@@ -254,7 +254,7 @@ class RagServiceImpl(RagService):
         }
         
         # 2. LLM에게 분석 요청
-        query = "채널에 최적화된 트렌드 키워드 6개를 생성하고 분석해주세요."
+        query = "채널에 최적화된 트렌드 키워드 5개를 생성하고 분석해주세요."
         prompt_template = PromptTemplateManager.get_channel_customized_trend_prompt()
         
         # 3. 채널 맞춤형 트렌드를 위한 특별 처리
