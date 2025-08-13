@@ -40,3 +40,6 @@ google-api-python-client
 
 #trend
 serpapi
+
+# isodate
+isodate

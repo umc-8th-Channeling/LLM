@@ -1,21 +1,25 @@
+from datetime import date
+
 import httpx
 from fastapi import FastAPI, HTTPException
 
 app = FastAPI()
 
-async def get_youtube_analytics_data(access_token: str, video_id: str) -> dict:
+async def get_youtube_analytics_data(access_token: str, video_id: str, metrics: str, dimensions=None) -> dict:
     import logging
     logger = logging.getLogger(__name__)
     
     url = (
         "https://youtubeanalytics.googleapis.com/v2/reports"
         "?ids=channel==MINE"
-        "&startDate=2025-07-01"
-        "&endDate=2025-07-27"
-        "&metrics=audienceWatchRatio,relativeRetentionPerformance"
-        "&dimensions=elapsedVideoTimeRatio"
+        "&startDate=1999-01-01"
+        f"&endDate={date.today()}"
+        f"&metrics={metrics}"
         f"&filters=video=={video_id}"
     )
+
+    if dimensions:
+        url += f"&dimensions={dimensions}"
 
     headers = {
         "Authorization": f"Bearer {access_token}",

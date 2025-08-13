@@ -23,7 +23,7 @@ class RagService(ABC):
         pass
     
     @abstractmethod
-    async def analyze_idea(self, video: Video, channel: Channel) -> List[Dict[str, Any]]:
+    async def analyze_idea(self, video: Video, channel: Channel, summary: str) -> List[Dict[str, Any]]:
         """아이디어 분석"""
         pass
     

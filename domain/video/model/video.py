@@ -3,12 +3,14 @@ from typing import Optional
 
 from sqlmodel import SQLModel, Field
 
+from core.enums.video_category import VideoCategory
+
 
 class Video(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     channel_id: int = Field(description="채널 ID")
     youtube_video_id: str = Field(description="YouTube 비디오 ID")
-    video_category: str = Field(description="LONG, SHORT")
+    video_category: VideoCategory = Field(description="비디오 카테고리")
     title: Optional[str] = Field(description="비디오 제목")
     view: Optional[int] = Field(description="조회수")
     like_count: Optional[int] = Field(description="좋아요 수")

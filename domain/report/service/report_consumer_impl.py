@@ -1,29 +1,27 @@
 
-from typing import Any, Dict, Optional, Tuple
-import time
+import asyncio
 import json
 import logging
-import asyncio
+import time
+from typing import Any, Dict, Optional, Tuple
 
-from core.enums.avg_type import AvgType
-from domain.comment.service.comment_service import CommentService
+from core.enums.source_type import SourceTypeEnum
 from domain.channel.repository.channel_repository import ChannelRepository
+from domain.comment.service.comment_service import CommentService
 from domain.content_chunk.repository.content_chunk_repository import ContentChunkRepository
-from domain.report.model.report import Report
-from domain.idea.repository.idea_repository import IdeaRepository
+from domain.idea.service.idea_service import IdeaService
+from domain.report.repository.report_repository import ReportRepository
 from domain.report.service.report_consumer import ReportConsumer
 from domain.report.service.report_service import ReportService
-from domain.report.repository.report_repository import ReportRepository
+from domain.task.model.task import Status
 from domain.task.repository.task_repository import TaskRepository
+from domain.trend_keyword.model.trend_keyword_type import TrendKeywordType
+from domain.trend_keyword.repository.trend_keyword_repository import TrendKeywordRepository
 from domain.video.repository.video_repository import VideoRepository
-from external.rag.rag_service_impl import RagServiceImpl
 from domain.video.service.video_service import VideoService
 from external.rag import leave_analyize
-from core.enums.source_type import SourceTypeEnum
+from external.rag.rag_service_impl import RagServiceImpl
 from external.youtube.youtube_comment_service import YoutubeCommentService
-from domain.task.model.task import Status
-from domain.trend_keyword.repository.trend_keyword_repository import TrendKeywordRepository
-from domain.trend_keyword.model.trend_keyword_type import TrendKeywordType
 
 logger = logging.getLogger(__name__)
 
@@ -35,12 +33,13 @@ class ReportConsumerImpl(ReportConsumer):
         self.report_repository = ReportRepository()
         self.task_repository = TaskRepository()
         self.content_chunk_repository = ContentChunkRepository()
-        self.idea_repository = IdeaRepository()
         self.channel_repository = ChannelRepository()
-        self.youtube_comment_service = YoutubeCommentService()
         self.comment_service = CommentService()
         self.report_service = ReportService()
         self.trend_keyword_repository = TrendKeywordRepository()
+        self.idea_service = IdeaService()
+        self.youtube_comment_service = YoutubeCommentService()
+        self.video_service = VideoService()
  
 
     async def _get_report_and_video(self, message: Dict[str, Any]) -> Optional[Tuple[Any, Any]]:
@@ -135,26 +134,9 @@ class ReportConsumerImpl(ReportConsumer):
             await self.report_service.update_report_emotion_counts(report_id, summarized_comments)
 
             # 수치 정보 조회
-            video_service = VideoService()
-
-            avg_dic = await video_service.get_rating_avg(video)
-            concept = await video_service.analyze_consistency(video)
-            seo = await video_service.analyze_seo(video)
-            revisit = await video_service.analyze_revisit(video)
-
-            logger.info(f"조회수 : {video.view}")
-            logger.info(f"조회수평균-채널 : {avg_dic['view_avg']}")
-            logger.info(f"조회수평균-토픽 : {avg_dic['view_category_avg']}")
-            logger.info(f"좋아요 : {video.like_count}")
-            logger.info(f"좋아요평균-토픽 : {avg_dic['like_avg']}")
-            logger.info(f"좋아요평균-채널 : {avg_dic['like_category_avg']}")
-            logger.info(f"댓글 : {video.comment_count}")
-            logger.info(f"댓글평균-토픽 : {avg_dic['comment_avg']}")
-            logger.info(f"댓글평균-채널 : {avg_dic['comment_category_avg']}")
-
-            logger.info(f"일관성 : {concept}")
-            logger.info(f"seo : {seo}")
-            logger.info(f"재방문률 : {revisit}")
+            token = message.get("google_access_token")
+            avg_dic = await self.video_service.get_overview_rating(video, token)
+            logger.info("영상 평가 정보:\n%s", avg_dic)
 
             # 요약 정보 업데이트
             await self.report_repository.save({
@@ -169,9 +151,9 @@ class ReportConsumerImpl(ReportConsumer):
                 "view" : video.view,
                 "view_channel_avg": avg_dic['view_avg'],
                 "view_topic_avg": avg_dic['view_category_avg'],
-                "concept" : concept,
-                "seo" : seo,
-                "revisit" : revisit,
+                "concept" : avg_dic['concept'],
+                "seo" : avg_dic['seo'],
+                "revisit" : avg_dic['revisit'],
             })
             logger.info("보고서 정보를 MYSQL DB에 저장했습니다.")
 
@@ -408,41 +390,18 @@ class ReportConsumerImpl(ReportConsumer):
                 # 일괄 저장
                 saved_channel = await self.trend_keyword_repository.save_bulk(channel_keywords_to_save)
                 logger.info(f"{len(saved_channel)}개의 채널 맞춤형 키워드를 MySQL에 저장했습니다.")
-        
+
+            # 아이디어 분석 요청
+            await self.idea_service.create_idea(video, channel, report_id)
+
+            # task 업데이트
+            task = await self.task_repository.find_by_id(message["task_id"])
+            if task:
+                await self.task_repository.save({
+                    "id": task.id,
+                    "idea_status": Status.COMPLETED
+                })
+                logger.info(f"Task ID {task.id}의 idea_status를 COMPLETED로 업데이트했습니다.")
+
         except Exception as e:
-            logger.error(f"handle_idea 처리 중 오류 발생: {e}")
-
-
-        # 메시지에서 video_id 추출 TODO 예외처리
-        report = await self.report_repository.find_by_id(message["report_id"])
-        video = await self.video_repository.find_by_id(report.video_id)
-        channel = await self.channel_repository.find_by_id(video.channel_id)
-
-        # 아이디어 분석 요청
-        idea_results = await self.rag_service.analyze_idea(video, channel)
-
-        logger.info(f"아이디어 분석 결과: {idea_results}")
-
-        # 아이디어 분석 결과를 Report에 저장
-        ideas = []
-        for idea_result in idea_results:
-            idea = {
-                "video_id": video.id,
-                "title": idea_result.get("title"),
-                "content": idea_result.get("description"),
-                "hash_tag": json.dumps(idea_result.get("tags"), ensure_ascii=False),
-                "is_book_marked": 0,
-            }
-            ideas.append(idea)
-
-        await self.idea_repository.save_bulk(ideas)
-        logger.info("아이디어 분석 결과를 MYSQL DB에 저장했습니다.")
-
-        # task 업데이트
-        task = await self.task_repository.find_by_id(message["task_id"])
-        if task:
-            await self.task_repository.save({
-                "id": task.id,
-                "idea_status": Status.COMPLETED
-            })
-            logger.info(f"Task ID {task.id}의 idea_status를 COMPLETED로 업데이트했습니다.")
+            logger.error(f"handle_idea 처리 중 오류 발생: {e!r}")
