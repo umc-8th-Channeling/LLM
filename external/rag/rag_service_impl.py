@@ -125,7 +125,7 @@ class RagServiceImpl(RagService):
             raise e
 
     
-    def analyze_algorithm_optimization(self, video_id: str) -> str:
+    async def analyze_algorithm_optimization(self, video_id: str) -> str:
         """
         유튜브 알고리즘 최적화 분석
         
@@ -167,8 +167,21 @@ class RagServiceImpl(RagService):
                 }
             }
             
+            # 유사한 이전 알고리즘 최적화 분석 사례 검색
+            query_text = f"제목: {video_details.get('title', '')}, 설명: {video_details.get('description', '')[:200]}"
+            similar_chunks = await self.content_chunk_repository.search_similar_optimization(
+                query_text=query_text,
+                limit=3
+            )
+            
             # JSON 형식으로 context 생성
             context = json.dumps(optimization_data, ensure_ascii=False, indent=2)
+            
+            # 이전 분석 사례가 있으면 context에 추가
+            if similar_chunks:
+                previous_cases = "\n\n---\n\n".join([chunk.get("content", "") for chunk in similar_chunks])
+                context += f"\n\n## 유사 영상의 이전 최적화 분석 사례:\n{previous_cases}"
+                logger.info(f"유사한 이전 분석 사례 {len(similar_chunks)}개를 context에 추가했습니다.")
             
             query = "이 유튜브 영상의 알고리즘 최적화 상태를 분석하고 구체적인 개선 방안을 제시해주세요."
             
