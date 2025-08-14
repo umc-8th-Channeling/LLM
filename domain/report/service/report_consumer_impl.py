@@ -95,6 +95,7 @@ class ReportConsumerImpl(ReportConsumer):
 
             report, video = result
             report_id = report.id
+            
             video_id = video.id    
 
             
@@ -103,12 +104,8 @@ class ReportConsumerImpl(ReportConsumer):
 
             #---------------------------------------------------------------------------------------
 
-            # 댓글 정보 조회
-            comments_by_youtube = await self.youtube_comment_service.get_comments(youtube_video_id, report_id)
-            comments_obj = await self.comment_service.convert_to_comment_objects(comments_by_youtube)
-            result = await self.comment_service.gather_classified_comments(comments_obj)
-            summarized_comments = await self.comment_service.summarize_comments_by_emotions_with_llm(result)
-            await self.report_service.update_report_emotion_counts(report_id, summarized_comments)
+            # 댓글 프로세스
+            await self.comment_service.analyze_comments(video, report_id)
 
             #---------------------------------------------------------------------------------------
 

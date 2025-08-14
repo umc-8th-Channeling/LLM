@@ -5,7 +5,10 @@ import logging
 from domain.comment.model.comment import Comment
 from domain.comment.model.comment_type import CommentType
 from domain.comment.repository.comment_repository import CommentRepository
+from domain.report.repository.report_repository import ReportRepository
+from domain.video.model.video import Video
 from external.rag.rag_service_impl import RagServiceImpl
+from external.youtube.youtube_comment_service import YoutubeCommentService
 
 logger = logging.getLogger(__name__)
 
@@ -13,6 +16,8 @@ class CommentService:
     def __init__(self):
         self.rag_service = RagServiceImpl()
         self.comment_repository = CommentRepository()
+        self.youtube_comment_service = YoutubeCommentService()
+        self.report_repository = ReportRepository()
 
     async def summarize_comments_by_emotions_with_llm(self, comments_by_emotions: DefaultDict[CommentType, list[Comment]]) -> defaultdict[CommentType, List[Comment]]:
         summarized_comments: defaultdict[CommentType, List[Comment]] = defaultdict(list)
@@ -64,6 +69,48 @@ class CommentService:
             grouped[result.comment_type].append(result)
 
         return grouped
+
+    async def analyze_comments(self, video: Video, report_id: int) -> bool:
+        """
+        영상의 댓글을 분석하고 감정별로 요약하여 저장
+        
+        Args:
+            video: 비디오 객체
+            report_id: 리포트 ID
+            
+        Returns:
+            성공 시 True, 실패 시 False
+        """
+        try:
+            # 유튜브 영상 아이디 조회
+            youtube_video_id = getattr(video, "youtube_video_id", None)
+            if not youtube_video_id:
+                logger.error("YouTube 영상 ID가 없습니다.")
+                return False
+            
+            # 댓글 정보 조회
+            comments_by_youtube = await self.youtube_comment_service.get_comments(youtube_video_id, report_id)
+            
+            # Comment 객체로 변환
+            comments_obj = await self.convert_to_comment_objects(comments_by_youtube)
+            
+            # 감정별로 분류
+            result = await self.gather_classified_comments(comments_obj)
+            
+            # 감정별 요약 생성
+            summarized_comments = await self.summarize_comments_by_emotions_with_llm(result)
+            
+            # 감정별 댓글 개수 업데이트
+            count_dict = {comment_type: len(comments) for comment_type, comments in summarized_comments.items()}
+            logger.info("댓글 개수를 MYSQL DB에 저장합니다.")
+            await self.report_repository.update_count(report_id, count_dict)
+            
+            logger.info("댓글 분석이 완료되었습니다.")
+            return True
+            
+        except Exception as e:
+            logger.error(f"댓글 분석 중 오류 발생: {e}")
+            return False
 
     # 유튜브 api 에서 가져온 댓글을 Comment 객체로 변환
     async def convert_to_comment_objects(self, comments: list[dict]) -> list[Comment]:
