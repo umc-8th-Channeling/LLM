@@ -38,7 +38,7 @@ class ContentChunkRepository(VectorRepository[ContentChunk]):
         meta_data = {"query_embedding": str(query_embedding)}
         
         # 알고리즘 최적화 타입의 유사 청크 검색
-        return await self.search_similar_test(
+        return await self.search_similar_by_embedding(
             SourceTypeEnum.ALGORITHM_OPTIMIZATION,
             metadata=meta_data,
             limit=limit

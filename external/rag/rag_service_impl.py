@@ -101,7 +101,7 @@ class RagServiceImpl(RagService):
             video_embedding = await self.content_chunk_repository.generate_embedding(query_text)
             meta_data = {"query_embedding": str(video_embedding)}
 
-            similar_chunks = await self.content_chunk_repository.search_similar_test(
+            similar_chunks = await self.content_chunk_repository.search_similar_by_embedding(
                 SourceTypeEnum.IDEA_RECOMMENDATION, metadata=meta_data, limit=5
             )
 
