@@ -26,7 +26,8 @@ async def get_youtube_analytics_data(access_token: str, video_id: str, metrics: 
         "Accept": "application/json",
     }
 
-    async with httpx.AsyncClient() as client:
+    timeout = httpx.Timeout(connect=30.0, read=60.0, write=30.0, pool=30.0)
+    async with httpx.AsyncClient(timeout=timeout) as client:
         response = await client.get(url, headers=headers)
 
     if response.status_code == 429:
