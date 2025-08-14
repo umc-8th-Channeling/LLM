@@ -94,44 +94,20 @@ class ReportConsumerImpl(ReportConsumer):
                 return
 
             report, video = result
-            report_id = report.id
-            
-            video_id = video.id    
+            report_id = report.id  
 
-            
             # 요약 프로세스
             await self.report_service.create_summary(video, report_id)
 
-            #---------------------------------------------------------------------------------------
 
             # 댓글 프로세스
             await self.comment_service.analyze_comments(video, report_id)
 
-            #---------------------------------------------------------------------------------------
 
-            # 수치 정보 조회
+            # 수치 정보 프로세스
             token = message.get("google_access_token")
-            avg_dic = await self.video_service.get_overview_rating(video, token)
-            logger.info("영상 평가 정보:\n%s", avg_dic)
+            await self.video_service.analyze_metrics(video, report_id, token)
 
-            # 요약 정보 업데이트
-            await self.report_repository.save({
-                "id": report_id,
-                # 영상 평가
-                "like_count": video.like_count,
-                "like_channel_avg": avg_dic['like_category_avg'],
-                "like_topic_avg": avg_dic['like_avg'],
-                "comment" : video.comment_count,
-                "comment_channel_avg": avg_dic['comment_category_avg'],
-                "comment_topic_avg": avg_dic['comment_avg'],
-                "view" : video.view,
-                "view_channel_avg": avg_dic['view_avg'],
-                "view_topic_avg": avg_dic['view_category_avg'],
-                "concept" : avg_dic['concept'],
-                "seo" : avg_dic['seo'],
-                "revisit" : avg_dic['revisit'],
-            })
-            logger.info("보고서 정보를 MYSQL DB에 저장했습니다.")
 
             # task 정보 업데이트
             task = await self.task_repository.find_by_id(message["task_id"])
