@@ -98,31 +98,8 @@ class ReportConsumerImpl(ReportConsumer):
             video_id = video.id    
 
             
-            # 여기 부터 rag 시작
-            # 유튜브 영상 아이디 조회
-            youtube_video_id = getattr(video, "youtube_video_id", None)
-            
-            #요약 결과 조회
-            summary = self.rag_service.summarize_video(youtube_video_id)
-
-            # 요약 결과만 출력
-            logger.info("요약 결과:\n%s", summary)     
-
-            # 벡터 db에 저장       
-            await self.content_chunk_repository.save_context(
-                source_type=SourceTypeEnum.VIDEO_SUMMARY,
-                source_id=report_id,
-                context=summary
-            )
-            logger.info("요약 결과를 벡터 DB에 저장했습니다.")
-
-            # 요약 정보 업데이트
-            await self.report_repository.save({
-                "id": report_id,
-                "summary": summary,
-                "title": video.title
-            })
-            logger.info("요약 결과를 MYSQL DB에 저장했습니다.")
+            # 요약 프로세스
+            await self.report_service.create_summary(video, report_id)
 
             #---------------------------------------------------------------------------------------
 
@@ -132,6 +109,8 @@ class ReportConsumerImpl(ReportConsumer):
             result = await self.comment_service.gather_classified_comments(comments_obj)
             summarized_comments = await self.comment_service.summarize_comments_by_emotions_with_llm(result)
             await self.report_service.update_report_emotion_counts(report_id, summarized_comments)
+
+            #---------------------------------------------------------------------------------------
 
             # 수치 정보 조회
             token = message.get("google_access_token")
