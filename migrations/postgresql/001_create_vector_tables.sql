@@ -27,15 +27,7 @@ CREATE TABLE IF NOT EXISTS content_chunk (
     -- 시간 관리
     created_at TIMESTAMP DEFAULT NOW()
 );
--- 2. 미리 정의된 질문 템플릿 테이블
-CREATE TABLE IF NOT EXISTS question_template (
-    id SERIAL PRIMARY KEY,
-    source_type source_type_enum NOT NULL,
-    question_text TEXT NOT NULL,
-    embedding vector(1536) NOT NULL,
-    meta JSONB,
-    created_at TIMESTAMP DEFAULT NOW()
-);
+
 -- -- 3. 검색 로그 테이블 (성능 최적화용)
 -- CREATE TABLE IF NOT EXISTS search_logs (
 --     id SERIAL PRIMARY KEY,

@@ -1,6 +1,7 @@
 from external.rag.rag_service import RagService
 from external.youtube.transcript_service import TranscriptService
 from external.youtube.video_detail_service import VideoDetailService
+from external.youtube.youtube_video_service import VideoService
 from external.youtube.youtube_comment_service import YoutubeCommentService
 from domain.content_chunk.repository.content_chunk_repository import ContentChunkRepository
 from domain.video.model.video import Video
@@ -29,6 +30,7 @@ class RagServiceImpl(RagService):
         self.youtube_comment_service = YoutubeCommentService()
         self.content_chunk_repository = ContentChunkRepository()
         self.trend_service = TrendService()
+        self.youtube_video_service = VideoService()
         self.llm = ChatOpenAI(model="gpt-4o-mini")
     
     def summarize_video(self, video_id: str) -> str:
@@ -64,63 +66,66 @@ class RagServiceImpl(RagService):
         contents = [item["content"] for item in result_list if isinstance(item, dict) and "content" in item]
         return contents
 
-    async def analyze_idea(self, video: Video, channel: Channel) -> List[Dict[str, Any]]:
-        # 필요한 데이터
-        # 1. 내 채널, 내 영상
-        origin_context = f"""
-        - 분석 채널명: {channel.name}
-        - 채널 컨셉: {channel.concept}
-        - 타겟 시청자: {channel.target}
-        - 분석 영상 제목: {video.title}
-        - 분석 영상 설명: {video.description}
-        """
-        logging.info("분석 기반 데이터(Origin) 생성 완료")
-
-        # 2. 인기 동영상 목록 유튜브 호출
-        category_id = "0"  # TODO 카테고리가 없을 수 있는지 확인 (youtube api 내 기본값이 0)
-        popular_videos = self.youtube_comment_service.get_category_popular(category_id)
-        logging.info(f"카테고리 '{category_id}'의 인기 영상 {len(popular_videos)}개 조회 완료")
-
-        # 3. 텍스트로 변환하여 Vector DB에 저장
-        for popular in popular_videos:
-            pop_video_text = f"""제목: {popular['video_title']}, 설명: {popular['video_description']},태그: {popular['video_hash_tag']},채널명: {popular['channel_title']}"""
-            await self.content_chunk_repository.save_context(
-                source_type=SourceTypeEnum.IDEA_RECOMMENDATION,
-                source_id=video.id,
-                context=pop_video_text)
-        logging.info("인기 영상 정보 Vector DB 저장 완료")
-
-        # 4. 영상과 의미적으로 가장 유사한 '인기 영상' 청크를 검색
-        query_text = f"제목: {video.title}, 설명: {video.description}, 채널명: {channel.name}"
-        video_embedding = await self.content_chunk_repository.generate_embedding(query_text)
-        meta_data = {"query_embedding": str(video_embedding)}
-
-        similar_chunks = await self.content_chunk_repository.search_similar_test(
-            SourceTypeEnum.IDEA_RECOMMENDATION, metadata=meta_data, limit=5
-        )
-        logging.info(f"유사도 높은 인기 영상 청크 {len(similar_chunks)}개 검색 완료")
-
-        # 5. 검색된 청크(내용)를 텍스트로
-        popularity_context = "\n".join([chunk.get("content", "") for chunk in similar_chunks])
-
-        # TODO _execute_llm_chain
-        chain = PromptTemplateManager.get_idea_prompt | self.llm
-        result_str = await chain.ainvoke({
-            "context": origin_context,
-            "input": popularity_context
-        })
-
-        logging.info(f"LLM 아이디어 생성 결과: {result_str.content}")
-
-        # LLM의 응답 문자열을 JSON 파싱
+    async def analyze_idea(self, video: Video, channel: Channel, summary: str) -> List[Dict[str, Any]]:
         try:
+            # 0. 영상 내용 참고
+            sliced_summary = summary[:200]
+
+            # 1. 내 채널, 내 영상
+            origin_context = f"""
+            - 분석 영상 제목: {video.title}
+            - 분석 영상 설명: {video.description}
+            - 분석 영상 카테고리 : {video.video_category.name}
+            - 채널명: {channel.name}
+            - 컨셉: {channel.concept}
+            - 타겟 시청자: {channel.target}
+            - 내용 : {sliced_summary}
+            """
+            logging.info("아이디어 내 채널 확인 : %s", origin_context)
+
+            # 2. 인기 동영상 목록 유튜브 호출
+            category_id = video.video_category.value
+            popular_videos = self.youtube_video_service.get_category_popular(category_id)
+            logging.info(f"아이디어 - 유튜브 인기 동영상 추출 완료")
+
+            # 3. 텍스트로 변환하여 Vector DB에 저장
+            for popular in popular_videos:
+                pop_video_text = f"""제목: {popular['video_title']}, 설명: {popular['video_description']},태그: {popular['video_hash_tag']}"""
+                await self.content_chunk_repository.save_context(
+                    source_type=SourceTypeEnum.IDEA_RECOMMENDATION,
+                    source_id=video.id,
+                    context=pop_video_text)
+
+            # 4. 영상과 의미적으로 가장 유사한 '인기 영상' 청크를 검색
+            query_text = f"제목: {video.title}, 설명: {video.description}, 카테고리: {video.video_category.name}"
+            video_embedding = await self.content_chunk_repository.generate_embedding(query_text)
+            meta_data = {"query_embedding": str(video_embedding)}
+
+            similar_chunks = await self.content_chunk_repository.search_similar_by_embedding(
+                SourceTypeEnum.IDEA_RECOMMENDATION, metadata=meta_data, limit=5
+            )
+
+            # 5. 검색된 청크(내용)를 텍스트로
+            popularity_context = "\n".join([chunk.get("content", "") for chunk in similar_chunks])
+
+            # 프롬프트 생성 및 LLM 실행
+            query = "트렌드 분석 후, 이 유튜브 영상과 관련된 새 컨텐츠에 대한 아이디어를 3개 생성해주세요."
+            chain = PromptTemplateManager.get_idea_prompt | self.llm
+            result_str = await chain.ainvoke({
+                "query": query,
+                "origin": origin_context,
+                "popularity": popularity_context
+            })
+
+            # LLM의 응답 문자열을 JSON 파싱
             clean_json_str = result_str.content.strip().replace("```json", "").replace("```", "")
             return json.loads(clean_json_str)
-        except json.JSONDecodeError:
-            logging.error("LLM 응답을 JSON으로 파싱하는 데 실패했습니다.")
-            return []
+        except Exception as e:
+            logger.error(f"아이디어 생성 중 오류 발생: {e!r}")
+            raise e
+
     
-    def analyze_algorithm_optimization(self, video_id: str) -> str:
+    async def analyze_algorithm_optimization(self, video_id: str) -> str:
         """
         유튜브 알고리즘 최적화 분석
         
@@ -162,8 +167,21 @@ class RagServiceImpl(RagService):
                 }
             }
             
+            # 유사한 이전 알고리즘 최적화 분석 사례 검색
+            query_text = f"제목: {video_details.get('title', '')}, 설명: {video_details.get('description', '')[:200]}"
+            similar_chunks = await self.content_chunk_repository.search_similar_optimization(
+                query_text=query_text,
+                limit=3
+            )
+            
             # JSON 형식으로 context 생성
             context = json.dumps(optimization_data, ensure_ascii=False, indent=2)
+            
+            # 이전 분석 사례가 있으면 context에 추가
+            if similar_chunks:
+                previous_cases = "\n\n---\n\n".join([chunk.get("content", "") for chunk in similar_chunks])
+                context += f"\n\n## 유사 영상의 이전 최적화 분석 사례:\n{previous_cases}"
+                logger.info(f"유사한 이전 분석 사례 {len(similar_chunks)}개를 context에 추가했습니다.")
             
             query = "이 유튜브 영상의 알고리즘 최적화 상태를 분석하고 구체적인 개선 방안을 제시해주세요."
             
@@ -177,12 +195,12 @@ class RagServiceImpl(RagService):
             raise e
             
 
-    def analyze_realtime_trends(self, limit: int = 6, geo: str = "KR") -> Dict:
+    def analyze_realtime_trends(self, limit: int = 5, geo: str = "KR") -> Dict:
         """
         실시간 트렌드를 분석하여 YouTube 콘텐츠에 적합한 형태로 반환
         
         Args:
-            limit: 분석할 트렌드 개수 (최대 6개)
+            limit: 분석할 트렌드 개수 (최대 5개)
             geo: 지역 코드 (기본값: KR)
             
         Returns:
@@ -215,7 +233,8 @@ class RagServiceImpl(RagService):
         )
         
         try:
-            result = json.loads(result_str)
+            clean_json_str = result_str.strip().replace("```json", "").replace("```", "")
+            result = json.loads(clean_json_str)
             return result
         except json.JSONDecodeError:
             return {"error": "결과 파싱 오류", "raw_result": result_str}
@@ -248,7 +267,7 @@ class RagServiceImpl(RagService):
         }
         
         # 2. LLM에게 분석 요청
-        query = "채널에 최적화된 트렌드 키워드 6개를 생성하고 분석해주세요."
+        query = "채널에 최적화된 트렌드 키워드 5개를 생성하고 분석해주세요."
         prompt_template = PromptTemplateManager.get_channel_customized_trend_prompt()
         
         # 3. 채널 맞춤형 트렌드를 위한 특별 처리
