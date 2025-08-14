@@ -101,7 +101,7 @@ class RagServiceImpl(RagService):
             video_embedding = await self.content_chunk_repository.generate_embedding(query_text)
             meta_data = {"query_embedding": str(video_embedding)}
 
-            similar_chunks = await self.content_chunk_repository.search_similar_test(
+            similar_chunks = await self.content_chunk_repository.search_similar_by_embedding(
                 SourceTypeEnum.IDEA_RECOMMENDATION, metadata=meta_data, limit=5
             )
 
@@ -125,7 +125,7 @@ class RagServiceImpl(RagService):
             raise e
 
     
-    def analyze_algorithm_optimization(self, video_id: str) -> str:
+    async def analyze_algorithm_optimization(self, video_id: str) -> str:
         """
         유튜브 알고리즘 최적화 분석
         
@@ -167,8 +167,21 @@ class RagServiceImpl(RagService):
                 }
             }
             
+            # 유사한 이전 알고리즘 최적화 분석 사례 검색
+            query_text = f"제목: {video_details.get('title', '')}, 설명: {video_details.get('description', '')[:200]}"
+            similar_chunks = await self.content_chunk_repository.search_similar_optimization(
+                query_text=query_text,
+                limit=3
+            )
+            
             # JSON 형식으로 context 생성
             context = json.dumps(optimization_data, ensure_ascii=False, indent=2)
+            
+            # 이전 분석 사례가 있으면 context에 추가
+            if similar_chunks:
+                previous_cases = "\n\n---\n\n".join([chunk.get("content", "") for chunk in similar_chunks])
+                context += f"\n\n## 유사 영상의 이전 최적화 분석 사례:\n{previous_cases}"
+                logger.info(f"유사한 이전 분석 사례 {len(similar_chunks)}개를 context에 추가했습니다.")
             
             query = "이 유튜브 영상의 알고리즘 최적화 상태를 분석하고 구체적인 개선 방안을 제시해주세요."
             
@@ -182,12 +195,12 @@ class RagServiceImpl(RagService):
             raise e
             
 
-    def analyze_realtime_trends(self, limit: int = 6, geo: str = "KR") -> Dict:
+    def analyze_realtime_trends(self, limit: int = 5, geo: str = "KR") -> Dict:
         """
         실시간 트렌드를 분석하여 YouTube 콘텐츠에 적합한 형태로 반환
         
         Args:
-            limit: 분석할 트렌드 개수 (최대 6개)
+            limit: 분석할 트렌드 개수 (최대 5개)
             geo: 지역 코드 (기본값: KR)
             
         Returns:
@@ -254,7 +267,7 @@ class RagServiceImpl(RagService):
         }
         
         # 2. LLM에게 분석 요청
-        query = "채널에 최적화된 트렌드 키워드 6개를 생성하고 분석해주세요."
+        query = "채널에 최적화된 트렌드 키워드 5개를 생성하고 분석해주세요."
         prompt_template = PromptTemplateManager.get_channel_customized_trend_prompt()
         
         # 3. 채널 맞춤형 트렌드를 위한 특별 처리

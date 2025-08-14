@@ -274,7 +274,7 @@ class ReportConsumerImpl(ReportConsumer):
             #-------------------------------------------------------------------------------------
 
             # 알고리즘 최적화 방안 분석
-            analyze_opt = self.rag_service.analyze_algorithm_optimization(video_id=video.youtube_video_id)
+            analyze_opt = await self.rag_service.analyze_algorithm_optimization(video_id=video.youtube_video_id)
             logger.info("알고리즘 최적화 분석 결과:\n%s", analyze_opt)
 
             # 벡터 DB에 저장
