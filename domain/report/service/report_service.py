@@ -56,8 +56,7 @@ class ReportService:
             return True
             
         except Exception as e:
-            logger.error(f"요약 생성 중 오류 발생: {e}")
-            return False
+            raise
 
     async def update_report_emotion_counts(self, report_id: int, comment_dict:DefaultDict[str,List[Comment]]) -> bool:
         """

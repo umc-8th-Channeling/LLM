@@ -109,8 +109,7 @@ class CommentService:
             return True
             
         except Exception as e:
-            logger.error(f"댓글 분석 중 오류 발생: {e}")
-            return False
+            raise
 
     # 유튜브 api 에서 가져온 댓글을 Comment 객체로 변환
     async def convert_to_comment_objects(self, comments: list[dict]) -> list[Comment]:

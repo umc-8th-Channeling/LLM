@@ -97,16 +97,26 @@ class ReportConsumerImpl(ReportConsumer):
             report_id = report.id  
 
             # 요약 프로세스
-            await self.report_service.create_summary(video, report_id)
-
-
+            try:
+                await self.report_service.create_summary(video, report_id)
+            except Exception as e:
+                logger.error(f"요약 프로세스 실패: {e!r}")
+                raise
+                
             # 댓글 프로세스
-            await self.comment_service.analyze_comments(video, report_id)
-
-
+            try:
+                await self.comment_service.analyze_comments(video, report_id)
+            except Exception as e:
+                logger.error(f"댓글 프로세스 실패: {e!r}")
+                raise
+                
             # 수치 정보 프로세스
-            token = message.get("google_access_token")
-            await self.video_service.analyze_metrics(video, report_id, token)
+            try:
+                token = message.get("google_access_token")
+                await self.video_service.analyze_metrics(video, report_id, token)
+            except Exception as e:
+                logger.error(f"수치 정보 프로세스 실패: {e!r}")
+                raise
 
 
             # task 정보 업데이트
@@ -119,7 +129,7 @@ class ReportConsumerImpl(ReportConsumer):
                 logger.info(f"Task ID {task.id}의 overview_status를 COMPLETED로 업데이트했습니다.")
 
         except Exception as e:
-            logger.error(f"handle_overview 처리 중 오류 발생: {e}")
+            pass
         finally:
             end_time = time.time()  # 종료 시간 기록
             elapsed_time = end_time - start_time

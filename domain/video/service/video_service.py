@@ -265,5 +265,4 @@ class VideoService:
             return True
             
         except Exception as e:
-            logger.error(f"수치 정보 분석 중 오류 발생: {e}")
-            return False
+            raise
