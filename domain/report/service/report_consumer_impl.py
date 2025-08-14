@@ -129,7 +129,15 @@ class ReportConsumerImpl(ReportConsumer):
                 logger.info(f"Task ID {task.id}의 overview_status를 COMPLETED로 업데이트했습니다.")
 
         except Exception as e:
-            pass
+            logger.error(f"handle_overview 처리 중 오류 발생: {e}")
+            # task 정보 업데이트
+            task = await self.task_repository.find_by_id(message["task_id"])
+            if task:
+                await self.task_repository.save({
+                    "id": task.id,
+                    "overview_status": Status.FAILED
+                })
+                logger.info(f"Task ID {task.id}의 overview_status를 FAILED로 업데이트했습니다.")
         finally:
             end_time = time.time()  # 종료 시간 기록
             elapsed_time = end_time - start_time
@@ -265,6 +273,14 @@ class ReportConsumerImpl(ReportConsumer):
 
         except Exception as e:
             logger.error(f"handle_analysis 처리 중 오류 발생: {e}")
+            # task 정보 업데이트
+            task = await self.task_repository.find_by_id(message["task_id"])
+            if task:
+                await self.task_repository.save({
+                    "id": task.id,
+                    "analysis_status": Status.FAILED
+                })
+                logger.info(f"Task ID {task.id}의 analysis_status를 FAILED로 업데이트했습니다.")
         finally:
             end_time = time.time()  # 종료 시간 기록
             elapsed_time = end_time - start_time
@@ -274,6 +290,7 @@ class ReportConsumerImpl(ReportConsumer):
     async def handle_idea(self, message: Dict[str, Any]):
         """보고서 아이디어 요청 처리"""
         logger.info(f"Handling idea request")
+        start_time = time.time()  # 시작 시간 기록
         try:
             # 공통 메서드로 report와 video 정보 조회
             result = await self._get_report_and_video(message)
@@ -367,3 +384,15 @@ class ReportConsumerImpl(ReportConsumer):
 
         except Exception as e:
             logger.error(f"handle_idea 처리 중 오류 발생: {e!r}")
+            # task 정보 업데이트
+            task = await self.task_repository.find_by_id(message["task_id"])
+            if task:
+                await self.task_repository.save({
+                    "id": task.id,
+                    "idea_status": Status.FAILED
+                })
+                logger.info(f"Task ID {task.id}의 idea_status를 FAILED로 업데이트했습니다.")
+        finally:
+            end_time = time.time()  # 종료 시간 기록
+            elapsed_time = end_time - start_time
+            logger.info(f"handle_idea 처리 완료 (소요 시간: {elapsed_time:.2f}초)")
