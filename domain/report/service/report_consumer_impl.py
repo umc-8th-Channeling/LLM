@@ -94,68 +94,30 @@ class ReportConsumerImpl(ReportConsumer):
                 return
 
             report, video = result
-            report_id = report.id
-            video_id = video.id    
+            report_id = report.id  
 
-            
-            # 여기 부터 rag 시작
-            # 유튜브 영상 아이디 조회
-            youtube_video_id = getattr(video, "youtube_video_id", None)
-            
-            #요약 결과 조회
-            summary = self.rag_service.summarize_video(youtube_video_id)
+            # 요약 프로세스
+            try:
+                await self.report_service.create_summary(video, report_id)
+            except Exception as e:
+                logger.error(f"요약 프로세스 실패: {e!r}")
+                raise
+                
+            # 댓글 프로세스
+            try:
+                await self.comment_service.analyze_comments(video, report_id)
+            except Exception as e:
+                logger.error(f"댓글 프로세스 실패: {e!r}")
+                raise
+                
+            # 수치 정보 프로세스
+            try:
+                token = message.get("google_access_token")
+                await self.video_service.analyze_metrics(video, report_id, token)
+            except Exception as e:
+                logger.error(f"수치 정보 프로세스 실패: {e!r}")
+                raise
 
-            # 요약 결과만 출력
-            logger.info("요약 결과:\n%s", summary)     
-
-            # 벡터 db에 저장       
-            await self.content_chunk_repository.save_context(
-                source_type=SourceTypeEnum.VIDEO_SUMMARY,
-                source_id=report_id,
-                context=summary
-            )
-            logger.info("요약 결과를 벡터 DB에 저장했습니다.")
-
-            # 요약 정보 업데이트
-            await self.report_repository.save({
-                "id": report_id,
-                "summary": summary,
-                "title": video.title
-            })
-            logger.info("요약 결과를 MYSQL DB에 저장했습니다.")
-
-            #---------------------------------------------------------------------------------------
-
-            # 댓글 정보 조회
-            comments_by_youtube = await self.youtube_comment_service.get_comments(youtube_video_id, report_id)
-            comments_obj = await self.comment_service.convert_to_comment_objects(comments_by_youtube)
-            result = await self.comment_service.gather_classified_comments(comments_obj)
-            summarized_comments = await self.comment_service.summarize_comments_by_emotions_with_llm(result)
-            await self.report_service.update_report_emotion_counts(report_id, summarized_comments)
-
-            # 수치 정보 조회
-            token = message.get("google_access_token")
-            avg_dic = await self.video_service.get_overview_rating(video, token)
-            logger.info("영상 평가 정보:\n%s", avg_dic)
-
-            # 요약 정보 업데이트
-            await self.report_repository.save({
-                "id": report_id,
-                # 영상 평가
-                "like_count": video.like_count,
-                "like_channel_avg": avg_dic['like_category_avg'],
-                "like_topic_avg": avg_dic['like_avg'],
-                "comment" : video.comment_count,
-                "comment_channel_avg": avg_dic['comment_category_avg'],
-                "comment_topic_avg": avg_dic['comment_avg'],
-                "view" : video.view,
-                "view_channel_avg": avg_dic['view_avg'],
-                "view_topic_avg": avg_dic['view_category_avg'],
-                "concept" : avg_dic['concept'],
-                "seo" : avg_dic['seo'],
-                "revisit" : avg_dic['revisit'],
-            })
-            logger.info("보고서 정보를 MYSQL DB에 저장했습니다.")
 
             # task 정보 업데이트
             task = await self.task_repository.find_by_id(message["task_id"])
@@ -168,6 +130,14 @@ class ReportConsumerImpl(ReportConsumer):
 
         except Exception as e:
             logger.error(f"handle_overview 처리 중 오류 발생: {e}")
+            # task 정보 업데이트
+            task = await self.task_repository.find_by_id(message["task_id"])
+            if task:
+                await self.task_repository.save({
+                    "id": task.id,
+                    "overview_status": Status.FAILED
+                })
+                logger.info(f"Task ID {task.id}의 overview_status를 FAILED로 업데이트했습니다.")
         finally:
             end_time = time.time()  # 종료 시간 기록
             elapsed_time = end_time - start_time
@@ -213,7 +183,15 @@ class ReportConsumerImpl(ReportConsumer):
                 logger.info(f"Task ID {task.id}의 analysis_status를 COMPLETED로 업데이트했습니다.")
 
         except Exception as e:
-            pass
+            logger.error(f"handle_analysis 처리 중 오류 발생: {e}")
+            # task 정보 업데이트
+            task = await self.task_repository.find_by_id(message["task_id"])
+            if task:
+                await self.task_repository.save({
+                    "id": task.id,
+                    "analysis_status": Status.FAILED
+                })
+                logger.info(f"Task ID {task.id}의 analysis_status를 FAILED로 업데이트했습니다.")
         finally:
             end_time = time.time()  # 종료 시간 기록
             elapsed_time = end_time - start_time
@@ -223,6 +201,7 @@ class ReportConsumerImpl(ReportConsumer):
     async def handle_idea(self, message: Dict[str, Any]):
         """보고서 아이디어 요청 처리"""
         logger.info(f"Handling idea request")
+        start_time = time.time()  # 시작 시간 기록
         try:
             # 공통 메서드로 report와 video 정보 조회
             result = await self._get_report_and_video(message)
@@ -316,3 +295,15 @@ class ReportConsumerImpl(ReportConsumer):
 
         except Exception as e:
             logger.error(f"handle_idea 처리 중 오류 발생: {e!r}")
+            # task 정보 업데이트
+            task = await self.task_repository.find_by_id(message["task_id"])
+            if task:
+                await self.task_repository.save({
+                    "id": task.id,
+                    "idea_status": Status.FAILED
+                })
+                logger.info(f"Task ID {task.id}의 idea_status를 FAILED로 업데이트했습니다.")
+        finally:
+            end_time = time.time()  # 종료 시간 기록
+            elapsed_time = end_time - start_time
+            logger.info(f"handle_idea 처리 완료 (소요 시간: {elapsed_time:.2f}초)")

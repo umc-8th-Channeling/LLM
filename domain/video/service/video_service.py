@@ -7,9 +7,12 @@ from core.enums.avg_type import AvgType
 from domain.content_chunk.repository.content_chunk_repository import ContentChunkRepository
 from domain.video.model.video import Video
 from domain.video.repository.video_repository import VideoRepository
+from domain.report.repository.report_repository import ReportRepository
 import external.youtube.analytics_service as analytics_service
 from external.youtube.video_detail_service import VideoDetailService
+import logging
 
+logger = logging.getLogger(__name__)
 
 class VideoService:
 
@@ -17,6 +20,7 @@ class VideoService:
         self.video_repository = VideoRepository()
         self.content_chunk_repository = ContentChunkRepository()
         self.youtube_video_detail_service = VideoDetailService()
+        self.report_repository = ReportRepository()
 
 
     async def get_overview_rating(self, video: Video, access_token: str):
@@ -222,5 +226,43 @@ class VideoService:
         ratio_avg = target / avg if avg != 0 else 0
         return round(ratio_avg * 100, 2)
 
-
-
+    async def analyze_metrics(self, video: Video, report_id: int, access_token: str) -> bool:
+        """
+        영상의 수치 정보를 분석하고 리포트에 저장
+        
+        Args:
+            video: 비디오 객체
+            report_id: 리포트 ID
+            access_token: Google 액세스 토큰
+            
+        Returns:
+            성공 시 True, 실패 시 False
+        """
+        try:
+            # 영상 평가 정보 조회
+            avg_dic = await self.get_overview_rating(video, access_token)
+            logger.info("영상 평가 정보:\n%s", avg_dic)
+            
+            # 리포트 업데이트
+            await self.report_repository.save({
+                "id": report_id,
+                # 영상 평가
+                "like_count": video.like_count,
+                "like_channel_avg": avg_dic['like_category_avg'],
+                "like_topic_avg": avg_dic['like_avg'],
+                "comment" : video.comment_count,
+                "comment_channel_avg": avg_dic['comment_category_avg'],
+                "comment_topic_avg": avg_dic['comment_avg'],
+                "view" : video.view,
+                "view_channel_avg": avg_dic['view_avg'],
+                "view_topic_avg": avg_dic['view_category_avg'],
+                "concept" : avg_dic['concept'],
+                "seo" : avg_dic['seo'],
+                "revisit" : avg_dic['revisit'],
+            })
+            logger.info("보고서 정보를 MYSQL DB에 저장했습니다.")
+            
+            return True
+            
+        except Exception as e:
+            raise
