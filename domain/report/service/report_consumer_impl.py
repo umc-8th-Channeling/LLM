@@ -209,80 +209,30 @@ class ReportConsumerImpl(ReportConsumer):
                 return
             report, video = result
             report_id = report.id
-             # 실시간 트렌드 키워드 분석
-            realtime_keyword= self.rag_service.analyze_realtime_trends()
-
-            logger.info(f"실시간 트렌드 키워드 분석 결과: {realtime_keyword}")
-
-            # Video에서 channel_id 가져오기
+            # 트렌드 분석 및 키워드 저장 프로세스
+            try:
+                await self.report_service.analyze_trends_and_save(video, report_id)
+            except Exception as e:
+                logger.error(f"트렌드 분석 및 키워드 저장 프로세스 실패: {e!r}")
+                raise
+                
+            # 채널 정보는 아이디어 서비스에서 필요하므로 조회
             channel_id = getattr(video, "channel_id", None)
             if not channel_id:
                 logger.error("video에 channel_id가 없습니다.")
                 return
                 
-            # Channel 정보 조회
             channel = await self.channel_repository.find_by_id(channel_id)
             if not channel:
                 logger.warning(f"channel_id={channel_id}에 해당하는 채널이 없습니다.")
                 return
-            
-            logger.info(f"연관된 채널 정보: {channel}")
-            
-            # 채널 정보를 사용하여 트렌드 분석
-            channel_concept = getattr(channel, "concept", "")
-            target_audience = getattr(channel, "target", "")
-            
-            channel_keyword = self.rag_service.analyze_channel_trends(
-                channel_concept=channel_concept,
-                target_audience=target_audience
-            )
-            logger.info(f"채널 컨셉 : {channel_concept}")
-            logger.info(f"타겟 시청자 : {target_audience}")
-            logger.info(f"채널 맞춤형 키워드 분석 결과: {channel_keyword}")
 
-            # 벡터 db에 저장(채널 맞춤형 키워드만 저장)
-            await self.content_chunk_repository.save_context(
-                source_type=SourceTypeEnum.PERSONALIZED_KEYWORDS,
-                source_id=report_id,
-                context=json.dumps(channel_keyword, ensure_ascii=False)
-            )
-            logger.info("채널 맞춤형 키워드를 벡터 DB에 저장했습니다.")
-            
-            
-            # 실시간 트렌드 키워드 저장
-            if realtime_keyword and "trends" in realtime_keyword:
-                realtime_keywords_to_save = []
-                for keyword_data in realtime_keyword["trends"]:
-                    trend_keyword = {
-                        "report_id": report_id,
-                        "keyword_type": TrendKeywordType.REAL_TIME,
-                        "keyword": keyword_data.get("keyword", ""),
-                        "score": keyword_data.get("score", 0)
-                    }
-                    realtime_keywords_to_save.append(trend_keyword)
-                
-                # 일괄 저장
-                saved_realtime = await self.trend_keyword_repository.save_bulk(realtime_keywords_to_save)
-                logger.info(f"{len(saved_realtime)}개의 실시간 트렌드 키워드를 MySQL에 저장했습니다.")
-            
-            # 채널 맞춤형 키워드 저장
-            if channel_keyword and "customized_trends" in channel_keyword:
-                channel_keywords_to_save = []
-                for keyword_data in channel_keyword["customized_trends"]:
-                    trend_keyword = {
-                        "report_id": report_id,
-                        "keyword_type": TrendKeywordType.CHANNEL,
-                        "keyword": keyword_data.get("keyword", ""),
-                        "score": keyword_data.get("score", 0)
-                    }
-                    channel_keywords_to_save.append(trend_keyword)
-                
-                # 일괄 저장
-                saved_channel = await self.trend_keyword_repository.save_bulk(channel_keywords_to_save)
-                logger.info(f"{len(saved_channel)}개의 채널 맞춤형 키워드를 MySQL에 저장했습니다.")
-
-            # 아이디어 분석 요청
-            await self.idea_service.create_idea(video, channel, report_id)
+            # 아이디어 생성 프로세스
+            try:
+                await self.idea_service.create_idea(video, channel, report_id)
+            except Exception as e:
+                logger.error(f"아이디어 생성 프로세스 실패: {e!r}")
+                raise
 
             # task 업데이트
             task = await self.task_repository.find_by_id(message["task_id"])
