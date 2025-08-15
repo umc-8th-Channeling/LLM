@@ -62,6 +62,35 @@ class CommentService:
         return comment
 
     # 댓글을 분류
+    def sample_comments(self, comments: list[Comment], threshold: int = 100, sample_rate: float = 0.2) -> tuple[list[Comment], bool]:
+        """
+        댓글이 threshold 이상일 때 sample_rate 비율로 샘플링
+        
+        Args:
+            comments: 전체 댓글 리스트
+            threshold: 샘플링 시작 기준 (기본 100개)
+            sample_rate: 샘플링 비율 (기본 20%)
+            
+        Returns:
+            (샘플링된 댓글 리스트, 샘플링 여부 플래그)
+        """
+        total_count = len(comments)
+        
+        if total_count < threshold:
+            # 임계값 미만이면 전체 댓글 반환
+            logger.info(f"댓글 수({total_count})가 임계값({threshold}) 미만, 전체 댓글 분석")
+            return comments, False
+        
+        # 샘플링 수 계산 (최소 20개 보장)
+        sample_size = max(20, int(total_count * sample_rate))
+        sample_size = min(sample_size, total_count)  # 전체 댓글 수를 초과하지 않도록
+        
+        # 랜덤 샘플링
+        sampled_comments = random.sample(comments, sample_size)
+        
+        logger.info(f"댓글 샘플링: {total_count}개 중 {sample_size}개 선택 ({sample_rate*100:.0f}%)")
+        return sampled_comments, True
+
     async def gather_classified_comments(self, comments: list[Comment])->DefaultDict[CommentType, list[Comment]]:
         grouped = defaultdict(list)
         for comment in comments:
