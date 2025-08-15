@@ -67,8 +67,8 @@ class CommentService:
         
         Args:
             comments: 전체 댓글 리스트
-            threshold: 샘플링 시작 기준 (기본 100개)
-            sample_rate: 샘플링 비율 (기본 20%)
+            threshold: 샘플링 시작 기준 (기본 200개)
+            sample_rate: 샘플링 비율 (기본 10%)
             
         Returns:
             (샘플링된 댓글 리스트, 샘플링 여부 플래그)
