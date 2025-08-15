@@ -46,10 +46,17 @@ class RagServiceImpl(RagService):
         result = self.execute_llm_chain(comment, query, PromptTemplateManager.get_comment_reaction_prompt())
         print("LLM 응답 = ", result)
 
-        result_json = json.loads(result)
-        return {
-            "comment_type": CommentType.from_emotion_code(result_json.get("emotion"))
-        }
+        try:
+            clean_json_str = result.strip().replace("```json", "").replace("```", "")
+            result_json = json.loads(clean_json_str)
+            return {
+                "comment_type": CommentType.from_emotion_code(result_json.get("emotion"))
+            }
+        except json.JSONDecodeError as e:
+            print(f"JSON 파싱 오류: {e}, 원본 응답: {result}")
+            return {
+                "comment_type": CommentType.NEUTRAL
+            }
 
     def summarize_comments(self, comments: str) -> List[str]:
         query = (
@@ -62,9 +69,14 @@ class RagServiceImpl(RagService):
         )
         print("LLM 응답 = ", result)
 
-        result_list = json.loads(result)
-        contents = [item["content"] for item in result_list if isinstance(item, dict) and "content" in item]
-        return contents
+        try:
+            clean_json_str = result.strip().replace("```json", "").replace("```", "")
+            result_list = json.loads(clean_json_str)
+            contents = [item["content"] for item in result_list if isinstance(item, dict) and "content" in item]
+            return contents
+        except json.JSONDecodeError as e:
+            print(f"JSON 파싱 오류: {e}, 원본 응답: {result}")
+            return ["댓글 요약을 생성할 수 없습니다."]
 
     async def analyze_idea(self, video: Video, channel: Channel, summary: str) -> List[Dict[str, Any]]:
         try:
