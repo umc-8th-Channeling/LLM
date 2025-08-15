@@ -214,6 +214,7 @@ II. 글쓰기와 재능 (0:25 - 0:59)
             "- 영상 제목: {video_title}\n"
             "- 영상 설명: {video_description}\n"
             "- 영상 카테고리: {video_category}\n"
+            "- 영상 길이: {video_duration}\n"
             "- 채널 콘셉트: {channel_concept}\n"
             "- 채널 타겟: {channel_target}\n"
             "- 채널 주요 해시태그: {channel_hashtag}\n\n"
