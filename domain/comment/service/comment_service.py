@@ -98,6 +98,67 @@ class CommentService:
             grouped[result.comment_type].append(result)
 
         return grouped
+    
+    async def gather_classified_comments_optimized(self, all_comments: list[Comment]) -> DefaultDict[CommentType, list[Comment]]:
+        """
+        최적화된 댓글 감정 분류 - 샘플링을 통한 성능 개선
+        
+        Args:
+            all_comments: 전체 댓글 리스트
+            
+        Returns:
+            감정별로 분류된 댓글 딕셔너리
+        """
+        # 1. 샘플링 수행
+        sampled_comments, is_sampled = self.sample_comments(all_comments)
+        
+        # 2. 샘플링된 댓글만 LLM으로 감정 분류
+        logger.info(f"LLM 감정 분류 시작: {len(sampled_comments)}개 댓글")
+        sample_grouped = defaultdict(list)
+        for comment in sampled_comments:
+            result = await self.classify_comment_with_llm(comment)
+            sample_grouped[result.comment_type].append(result)
+        
+        # 3. 샘플링하지 않은 경우 그대로 반환
+        if not is_sampled:
+            return sample_grouped
+        
+        # 4. 샘플링한 경우: 감정 분포 계산
+        total_sampled = len(sampled_comments)
+        emotion_distribution = {}
+        for emotion, comments in sample_grouped.items():
+            emotion_distribution[emotion] = len(comments) / total_sampled
+        
+        logger.info(f"샘플 감정 분포: {dict(emotion_distribution)}")
+        
+        # 5. 전체 댓글에 감정 분포를 확률적으로 적용
+        final_grouped = defaultdict(list)
+        unsampled_comments = [c for c in all_comments if c not in sampled_comments]
+        
+        # 샘플링된 댓글은 이미 분류된 감정 그대로 추가
+        for emotion, comments in sample_grouped.items():
+            final_grouped[emotion].extend(comments)
+        
+        # 나머지 댓글에 확률적으로 감정 할당
+        for comment in unsampled_comments:
+            # 가중치 랜덤 선택으로 감정 할당
+            emotions = list(emotion_distribution.keys())
+            weights = list(emotion_distribution.values())
+            
+            if emotions and weights:
+                assigned_emotion = random.choices(emotions, weights=weights, k=1)[0]
+                comment.comment_type = assigned_emotion
+                final_grouped[assigned_emotion].append(comment)
+            else:
+                # 분포가 없으면 중립으로 할당
+                comment.comment_type = CommentType.NEUTRAL
+                final_grouped[CommentType.NEUTRAL].append(comment)
+        
+        # 최종 분포 로깅
+        final_distribution = {emotion: len(comments) for emotion, comments in final_grouped.items()}
+        logger.info(f"최종 감정 분포: {final_distribution}")
+        
+        return final_grouped
 
     async def analyze_comments(self, video: Video, report_id: int) -> bool:
         """
