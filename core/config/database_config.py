@@ -24,7 +24,7 @@ PG_PASSWORD = os.getenv("PG_PASSWORD")
 PG_DATABASE = os.getenv("PG_DATABASE")
 
 # 비동기 MySQL 연결 URL
-MYSQL_DATABASE_URL = f"mysql+aiomysql://{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL_HOST}:{MYSQL_PORT}/{MYSQL_DATABASE}"
+MYSQL_DATABASE_URL = f"mysql+aiomysql://{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL_HOST}:{MYSQL_PORT}/{MYSQL_DATABASE}?charset=utf8mb4"
 
 # 비동기 PostgreSQL 연결 URL
 # 로컬 개발환경인지 확인 (localhost나 127.0.0.1이면 SSL 비활성화)
@@ -41,6 +41,9 @@ mysql_engine = create_async_engine(
     echo=False,  # SQL 쿼리 로그 출력 비활성화
     pool_pre_ping=True,  # 연결 상태 체크
     pool_recycle=300,  # 연결 재사용 시간 (5분)
+    connect_args={
+        "init_command": "SET time_zone = '+09:00'"  # KST 타임존 설정
+    }
 )
 
 # PostgreSQL 엔진
