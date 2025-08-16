@@ -34,9 +34,17 @@ class RagServiceImpl(RagService):
         self.llm = ChatOpenAI(model="gpt-4o-mini")
     
     def summarize_video(self, video_id: str) -> str:
-        context = self.transcript_service.get_formatted_transcript(video_id)
-        print("정리된 자막 = ", context)
+        # 자막 정보 가져오기
+        transcript_context = self.transcript_service.get_formatted_transcript(video_id)
+        print("정리된 자막 = ", transcript_context)
         print()
+        
+        # 영상 상세 정보 조회 (duration 포함)
+        video_details = self.video_detail_service.get_video_details(video_id)
+        video_duration = video_details.get('duration', '')
+        
+        # context에 영상 길이 추가
+        context = f"영상 길이: {video_duration}\n\n{transcript_context}"
         
         query = "유튜브 영상 자막을 기반으로 10초 단위 개요를 위의 형식에 따라 작성해주세요."
         return self.execute_llm_chain(context, query, PromptTemplateManager.get_video_summary_prompt())

@@ -117,6 +117,12 @@ async def analyze_leave(video: Video, token: str) -> str:
         focus_range_sec = max(10, min(int(0.04 * video_length), 300))  # 집중 범위: 영상 길이의 4%, 최소 10초, 최대 5분
         start_focus_time = max(0, worst_sec - focus_range_sec // 2)
         end_focus_time = min(video_length, worst_sec + focus_range_sec // 2)
+        # 영상 상세 정보 조회 (duration 포함)
+        from external.youtube.video_detail_service import VideoDetailService
+        video_detail_service = VideoDetailService()
+        video_details = video_detail_service.get_video_details(youtube_video_id)
+        video_duration = video_details.get('duration', '')
+        
         # 3. context 생성
         context_data = {
             "cause_chunk": json.dumps(cause_chunk, ensure_ascii=False, indent=2),
@@ -126,6 +132,7 @@ async def analyze_leave(video: Video, token: str) -> str:
             "start_focus_time": start_focus_time,
             "end_focus_time": end_focus_time,
             "video_length": video_length,
+            "video_duration": video_duration,  # ISO 8601 형식 duration 추가
             "video_title" : video.title,
             "video_description" : video.description,
             "video_category" : video.video_category,
