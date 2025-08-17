@@ -88,8 +88,8 @@ async def create_report(video_id: int, request: CreateReportRequest):
     )
 
     # 메시지 발행
-    await report_producer.send_message("overview-topic", overview_message)
-    await report_producer.send_message("analysis-topic", analysis_message)
+    # await report_producer.send_message("overview-topic", overview_message)
+    # await report_producer.send_message("analysis-topic", analysis_message)
     await report_producer.send_message("idea-topic", idea_message)
 
     return ApiResponse.on_success(SuccessStatus._OK, {"task_id": task.id})

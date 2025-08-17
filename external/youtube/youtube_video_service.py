@@ -201,6 +201,25 @@ class VideoService:
         self.youtube = build('youtube', 'v3', developerKey=self.api_key)
 
         try:
+
+            return self._execute_youtube(category_id, region_code)
+
+        except HttpError as e:
+            if e.resp.status == 403:
+                logger.error("YouTube API quota exceeded")
+            if e.resp.status == 400:
+                logger.error(f"유튜브 인기 영상 - 미지원 카테고리 : {e!r}")
+                logger.info("유튜브 인기 영상 - 재시도 카테고리 ID: 0")
+                return self._execute_youtube('0', region_code)
+            else:
+                logger.error(f"HTTP error occurred: {e!r}")
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error in get_category_benchmarks: {e!r}")
+            raise
+
+    def _execute_youtube(self, category_id: str, region_code: str = 'KR'):
+        try:
             response = self.youtube.videos().list(
                 part='snippet,statistics',
                 chart='mostPopular',
@@ -220,13 +239,5 @@ class VideoService:
                 videos.append(video)
 
             return videos
-
-        except HttpError as e:
-            if e.resp.status == 403:
-                logger.error("YouTube API quota exceeded")
-            else:
-                logger.error(f"HTTP error occurred: {e!r}")
-            raise
         except Exception as e:
-            logger.error(f"Unexpected error in get_category_benchmarks: {e!r}")
             raise
