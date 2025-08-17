@@ -78,7 +78,7 @@ class RagServiceImpl(RagService):
             print(f"JSON 파싱 오류: {e}, 원본 응답: {result}")
             return ["댓글 요약을 생성할 수 없습니다."]
 
-    async def analyze_idea(self, video: Video, channel: Channel, summary: str="") -> List[Dict[str, Any]]:
+    async def analyze_idea(self, video: Video, channel: Channel, summary: str) -> List[Dict[str, Any]]:
         try:
             # 0. 영상 내용 참고
             sliced_summary = summary[:200]
