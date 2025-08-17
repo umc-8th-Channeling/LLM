@@ -83,7 +83,7 @@ class ReportConsumerImpl(ReportConsumer):
 
 
     async def handle_overview(self, message: Dict[str, Any]):
-        logger.info(f"Handling overview request")
+        logger.info(f"[V1] Handling overview request")
 
         start_time = time.time()  # 시작 시간 기록
 
@@ -141,13 +141,13 @@ class ReportConsumerImpl(ReportConsumer):
         finally:
             end_time = time.time()  # 종료 시간 기록
             elapsed_time = end_time - start_time
-            logger.info(f"handle_overview 전체 처리 시간: {elapsed_time:.3f}초")
+            logger.info(f"[V1] handle_overview 전체 처리 시간: {elapsed_time:.3f}초")
 
         
 
     async def handle_analysis(self, message: Dict[str, Any]):
         """보고서 분석 요청 처리"""
-        logger.info(f"Handling analysis request")
+        logger.info(f"[V1] Handling analysis request")
         start_time = time.time()  # 시작 시간 기록
         
         try:
@@ -195,12 +195,12 @@ class ReportConsumerImpl(ReportConsumer):
         finally:
             end_time = time.time()  # 종료 시간 기록
             elapsed_time = end_time - start_time
-            logger.info(f"handle_analysis 전체 처리 시간: {elapsed_time:.3f}초")
+            logger.info(f"[V1] handle_analysis 전체 처리 시간: {elapsed_time:.3f}초")
 
 
     async def handle_idea(self, message: Dict[str, Any]):
         """보고서 아이디어 요청 처리"""
-        logger.info(f"Handling idea request")
+        logger.info(f"[V1] Handling idea request")
         start_time = time.time()  # 시작 시간 기록
         try:
             # 공통 메서드로 report와 video 정보 조회
@@ -256,4 +256,4 @@ class ReportConsumerImpl(ReportConsumer):
         finally:
             end_time = time.time()  # 종료 시간 기록
             elapsed_time = end_time - start_time
-            logger.info(f"handle_idea 처리 완료 (소요 시간: {elapsed_time:.2f}초)")
+            logger.info(f"[V1] handle_idea 처리 완료 (소요 시간: {elapsed_time:.2f}초)")
