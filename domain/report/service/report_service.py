@@ -219,6 +219,9 @@ class ReportService:
         Returns:
             성공 시 True, 실패 시 False
         """
+        start_time = time.time()
+        logger.info(f"📊 트렌드 분석 시작 - Report ID: {report_id}")
+        
         try:
             # 1. 실시간 트렌드 분석
             realtime_keyword = self.rag_service.analyze_realtime_trends()
@@ -282,9 +285,14 @@ class ReportService:
                 
                 await self.trend_keyword_repository.save_bulk(channel_keywords_to_save)
                 logger.info("채널 맞춤형 키워드를 MySQL DB에 저장했습니다.")
+            
+            total_time = time.time() - start_time
+            logger.info(f"📊 트렌드 분석 전체 완료 ({total_time:.2f}초)")
             return True
             
         except Exception as e:
+            total_time = time.time() - start_time
+            logger.error(f"📊 트렌드 분석 실패 ({total_time:.2f}초): {e}")
             raise
 
     async def update_report_emotion_counts(self, report_id: int, comment_dict:DefaultDict[str,List[Comment]]) -> bool:
