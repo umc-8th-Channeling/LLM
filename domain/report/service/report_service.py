@@ -24,13 +24,14 @@ class ReportService:
         self.channel_repository = ChannelRepository()
         self.rag_service = RagServiceImpl()
 
-    async def create_summary(self, video: Video, report_id: int) -> bool:
+    async def create_summary(self, video: Video, report_id: int, skip_vector_save: bool = False) -> bool:
         """
         영상 요약을 생성하고 Vector DB와 MySQL에 저장
         
         Args:
             video: 비디오 객체
             report_id: 리포트 ID
+            skip_vector_save: Vector DB 저장 스킵 여부 (기본값: False)
             
         Returns:
             성공 시 True, 실패 시 False
@@ -46,13 +47,16 @@ class ReportService:
             summary = self.rag_service.summarize_video(youtube_video_id)
             logger.info("요약 결과:\n%s", summary)
             
-            # 벡터 DB에 저장
-            await self.content_chunk_repository.save_context(
-                source_type=SourceTypeEnum.VIDEO_SUMMARY,
-                source_id=report_id,
-                context=summary
-            )
-            logger.info("요약 결과를 벡터 DB에 저장했습니다.")
+            # 벡터 DB에 저장 (skip_vector_save가 False인 경우만)
+            if not skip_vector_save:
+                await self.content_chunk_repository.save_context(
+                    source_type=SourceTypeEnum.VIDEO_SUMMARY,
+                    source_id=report_id,
+                    context=summary
+                )
+                logger.info("요약 결과를 벡터 DB에 저장했습니다.")
+            else:
+                logger.info("[V2] 벡터 DB 저장을 스킵했습니다.")
             
             # MySQL에 저장
             await self.report_repository.save({
@@ -67,7 +71,7 @@ class ReportService:
         except Exception as e:
             raise
 
-    async def analyze_viewer_retention(self, video: Video, report_id: int, token: str) -> bool:
+    async def analyze_viewer_retention(self, video: Video, report_id: int, token: str, skip_vector_save: bool = False) -> bool:
         """
         시청자 이탈 분석 (재시도 로직 포함)
         
@@ -75,6 +79,7 @@ class ReportService:
             video: 비디오 객체
             report_id: 리포트 ID
             token: Google 액세스 토큰
+            skip_vector_save: Vector DB 저장 스킵 여부 (기본값: False)
             
         Returns:
             성공 시 True, 실패 시 False
@@ -112,12 +117,15 @@ class ReportService:
                         # 네트워크 에러가 아닌 경우 즉시 종료
                         raise
             
-            # Vector DB에 저장
-            await self.content_chunk_repository.save_context(
-                source_type=SourceTypeEnum.VIEWER_ESCAPE_ANALYSIS,
-                source_id=report_id,
-                context=leave_result
-            )
+            # Vector DB에 저장 (skip_vector_save가 False인 경우만)
+            if not skip_vector_save:
+                await self.content_chunk_repository.save_context(
+                    source_type=SourceTypeEnum.VIEWER_ESCAPE_ANALYSIS,
+                    source_id=report_id,
+                    context=leave_result
+                )
+            else:
+                logger.info("[V2] 벡터 DB 저장을 스킵했습니다.")
             
             # MySQL에 저장
             await self.report_repository.save({
@@ -130,13 +138,14 @@ class ReportService:
         except Exception as e:
             raise
 
-    async def analyze_optimization(self, video: Video, report_id: int) -> bool:
+    async def analyze_optimization(self, video: Video, report_id: int, skip_vector_save: bool = False) -> bool:
         """
         알고리즘 최적화 분석
         
         Args:
             video: 비디오 객체
             report_id: 리포트 ID
+            skip_vector_save: Vector DB 저장 스킵 여부 (기본값: False)
             
         Returns:
             성공 시 True, 실패 시 False
@@ -145,12 +154,15 @@ class ReportService:
             # 알고리즘 최적화 분석
             analyze_opt = await self.rag_service.analyze_algorithm_optimization(video_id=video.youtube_video_id)
             
-            # Vector DB에 저장
-            await self.content_chunk_repository.save_context(
-                source_type=SourceTypeEnum.ALGORITHM_OPTIMIZATION,
-                source_id=report_id,
-                context=analyze_opt
-            )
+            # Vector DB에 저장 (skip_vector_save가 False인 경우만)
+            if not skip_vector_save:
+                await self.content_chunk_repository.save_context(
+                    source_type=SourceTypeEnum.ALGORITHM_OPTIMIZATION,
+                    source_id=report_id,
+                    context=analyze_opt
+                )
+            else:
+                logger.info("[V2] 벡터 DB 저장을 스킵했습니다.")
             
             # MySQL에 저장
             await self.report_repository.save({
@@ -163,13 +175,14 @@ class ReportService:
         except Exception as e:
             raise
 
-    async def analyze_trends_and_save(self, video: Video, report_id: int) -> bool:
+    async def analyze_trends_and_save(self, video: Video, report_id: int, skip_vector_save: bool = False) -> bool:
         """
         트렌드 분석 및 키워드 저장
         
         Args:
             video: 비디오 객체
             report_id: 리포트 ID
+            skip_vector_save: Vector DB 저장 스킵 여부 (기본값: False)
             
         Returns:
             성공 시 True, 실패 시 False
@@ -196,13 +209,16 @@ class ReportService:
                 target_audience=target_audience
             )
             
-            # 4. Vector DB에 채널 맞춤형 키워드 저장
-            await self.content_chunk_repository.save_context(
-                source_type=SourceTypeEnum.PERSONALIZED_KEYWORDS,
-                source_id=report_id,
-                context=json.dumps(channel_keyword, ensure_ascii=False)
-            )
-            logger.info("채널 맞춤형 키워드를 Vector DB에 저장했습니다.")
+            # 4. Vector DB에 채널 맞춤형 키워드 저장 (skip_vector_save가 False인 경우만)
+            if not skip_vector_save:
+                await self.content_chunk_repository.save_context(
+                    source_type=SourceTypeEnum.PERSONALIZED_KEYWORDS,
+                    source_id=report_id,
+                    context=json.dumps(channel_keyword, ensure_ascii=False)
+                )
+                logger.info("채널 맞춤형 키워드를 Vector DB에 저장했습니다.")
+            else:
+                logger.info("[V2] 벡터 DB 저장을 스킵했습니다.")
             
             # 5. MySQL에 키워드 저장
             # 실시간 트렌드 키워드 저장
