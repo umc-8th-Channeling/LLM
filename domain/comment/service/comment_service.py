@@ -23,6 +23,8 @@ class CommentService:
     async def summarize_comments_by_emotions_with_llm(self, comments_by_emotions: DefaultDict[CommentType, list[Comment]]) -> defaultdict[CommentType, List[Comment]]:
         summarized_comments: defaultdict[CommentType, List[Comment]] = defaultdict(list)
 
+        summarize_and_save_start = time.time()
+        logger.info("📝 댓글 감정별 요약 및 저장 시작")
         # 감정별로 요약
         for emotion, comments in comments_by_emotions.items():
             if not comments:
@@ -32,13 +34,11 @@ class CommentService:
             contents_str = "\n".join(comment.content for comment in comments)
 
             # LLM 서비스 호출 -> returns list[str]
-            emotion_start = time.time()
-            logger.info(f"📝 {emotion.name} 감정 댓글 요약 시작 ({len(comments)}개)")
             summarized_contents = self.rag_service.summarize_comments(contents_str)
-            emotion_time = time.time() - emotion_start
-            logger.info(f"📝 {emotion.name} 감정 댓글 요약 완료 ({emotion_time:.2f}초)")
+            
 
 
+            
             # 요약 내용을 defaultdict에 추가 & DB 저장
             comments_to_save = []
             for content in summarized_contents:
@@ -56,6 +56,8 @@ class CommentService:
                 })
             await self.comment_repository.save_bulk(comments_to_save)
             logger.info("댓글 결과를 MYSQL DB에 저장했습니다.")
+        summarize_and_save_time = time.time() - summarize_and_save_start
+        logger.info(f"📝 댓글 감정별 요약 및 저장 완료 ({summarize_and_save_time:.2f}초)")
         return summarized_comments
 
     async def classify_comment_with_llm(self, comment: Comment) -> Comment:
