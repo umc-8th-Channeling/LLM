@@ -2,6 +2,7 @@ from typing import DefaultDict, List, Any
 import logging
 import json
 import asyncio
+import time
 from domain.comment.model.comment import Comment
 from domain.report.repository.report_repository import ReportRepository
 from domain.content_chunk.repository.content_chunk_repository import ContentChunkRepository
@@ -36,6 +37,9 @@ class ReportService:
         Returns:
             성공 시 True, 실패 시 False
         """
+        start_time = time.time()
+        logger.info(f"📄 요약 생성 시작 - Report ID: {report_id}")
+        
         try:
             # 유튜브 영상 아이디 조회
             youtube_video_id = getattr(video, "youtube_video_id", None)
@@ -43,8 +47,11 @@ class ReportService:
                 logger.error("YouTube 영상 ID가 없습니다.")
                 return False
             
-            # 요약 생성
+            # 요약 생성 (LLM API 호출)
+            summary_start = time.time()
             summary = self.rag_service.summarize_video(youtube_video_id)
+            summary_time = time.time() - summary_start
+            logger.info(f"🤖 LLM API 요약 생성 완료 ({summary_time:.2f}초)")
             logger.info("요약 결과:\n%s", summary)
             
             # 벡터 DB에 저장 (skip_vector_save가 False인 경우만)
@@ -59,16 +66,22 @@ class ReportService:
                 logger.info("[V2] 벡터 DB 저장을 스킵했습니다.")
             
             # MySQL에 저장
+            mysql_start = time.time()
             await self.report_repository.save({
                 "id": report_id,
                 "summary": summary,
                 "title": video.title
             })
-            logger.info("요약 결과를 MYSQL DB에 저장했습니다.")
+            mysql_time = time.time() - mysql_start
+            logger.info(f"🗄️ MySQL DB 저장 완료 ({mysql_time:.2f}초)")
             
+            total_time = time.time() - start_time
+            logger.info(f"📄 요약 생성 전체 완료 ({total_time:.2f}초)")
             return True
             
         except Exception as e:
+            total_time = time.time() - start_time
+            logger.error(f"📄 요약 생성 실패 ({total_time:.2f}초): {e}")
             raise
 
     async def analyze_viewer_retention(self, video: Video, report_id: int, token: str, skip_vector_save: bool = False) -> bool:
@@ -84,15 +97,21 @@ class ReportService:
         Returns:
             성공 시 True, 실패 시 False
         """
+        start_time = time.time()
+        logger.info(f"📊 시청자 이탈 분석 시작 - Report ID: {report_id}")
+        
         try:
             leave_result = None
             max_retries = 3
             retry_count = 0
             
-            # 재시도 로직
+            # 재시도 로직 (이탈 분석 API 호출)
+            api_start = time.time()
             while retry_count < max_retries:
                 try:
                     leave_result = await leave_analyize.analyze_leave(video, token)
+                    api_time = time.time() - api_start
+                    logger.info(f"📈 이탈 분석 API 호출 완료 ({api_time:.2f}초)")
                     break  # 성공하면 루프 종료
                     
                 except (AttributeError, TypeError, KeyError):

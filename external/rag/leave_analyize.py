@@ -13,6 +13,7 @@ from core.llm.prompt_template_manager import PromptTemplateManager
 from domain.channel.repository.channel_repository import ChannelRepository
 import os
 import logging
+import time
 load_dotenv()
 
 logger = logging.getLogger(__name__)
@@ -55,8 +56,12 @@ async def analyze_leave(video: Video, token: str) -> str:
 
         # 2. 영상의 스크립트 가져오기
         # 대본 스크립트 가져오기
-        logger.info("영상 자막 데이터 가져오는 중...")
+        transcript_start = time.time()
+        logger.info("📜 영상 자막 데이터 가져오는 중...")
         context = transcript_service.get_structured_transcript(youtube_video_id)
+        transcript_time = time.time() - transcript_start
+        logger.info(f"📜 자막 데이터 가져오기 완료 ({transcript_time:.2f}초)")
+        
         if not context:
             logger.error("자막 데이터를 가져올 수 없습니다.")
             raise ValueError("자막 데이터가 없습니다.")
@@ -66,10 +71,14 @@ async def analyze_leave(video: Video, token: str) -> str:
         logger.info(f"영상 총 길이: {video_length}초")
 
         # 4. 영상 분석 결과 가져오기 (analytics)
-        logger.info("YouTube Analytics 데이터 가져오는 중...")
+        analytics_start = time.time()
+        logger.info("📊 YouTube Analytics 데이터 가져오는 중...")
         metrics = "audienceWatchRatio,relativeRetentionPerformance"
         dimensions = "elapsedVideoTimeRatio"
         analytics_data = await analyticsServcie.get_youtube_analytics_data(token, youtube_video_id, metrics, dimensions)
+        analytics_time = time.time() - analytics_start
+        logger.info(f"📊 YouTube Analytics 데이터 가져오기 완료 ({analytics_time:.2f}초)")
+        
         if not analytics_data or "rows" not in analytics_data:
             logger.warning("Analytics 데이터를 가져올 수 없습니다. 기본값 사용.")
             analytics_data = {"rows": []}
@@ -79,21 +88,27 @@ async def analyze_leave(video: Video, token: str) -> str:
         logger.info(f"최대 이탈 시점 비율: {worst_ratio}")
 
         # 6. 시간 단위 청킹 및 임베딩 저장
-        logger.info("시간 단위 청킹 데이터 확인 중...")
+        chunking_start = time.time()
+        logger.info("🔧 시간 단위 청킹 데이터 확인 중...")
         exists = await content_repository.exists_by_chunk_type_and_id("time", str(video_id))
         if exists:
             logger.info("기존에 저장한 적 있는 영상입니다. 대본 기반의 청킹 생성을 건너뜁니다.")
         else:
-            logger.info("시간 단위 청킹 생성 중...")
+            logger.info("🔧 시간 단위 청킹 생성 중...")
             await ChunkService.create_time_chunks_with_focus(video_id, video_length, context, analytics_data.get("rows", []), worst_ratio)
         
         # 7. 의미 단위 청킹 및 임베딩 저장
-        logger.info("의미 단위 청킹 생성 중...")
+        logger.info("🔧 의미 단위 청킹 생성 중...")
         await ChunkService.create_meaning_chunks_with_focus(video_id, video_length, context, analytics_data.get("rows", []), worst_ratio)
+        chunking_time = time.time() - chunking_start
+        logger.info(f"🔧 청킹 및 임베딩 저장 완료 ({chunking_time:.2f}초)")
 
 
 
         # 8. 질문 리스트와 유사도 분석해서, 각 질문마다 3개씩의 청킹을 조회
+        similarity_start = time.time()
+        logger.info("🔍 유사도 검색 시작...")
+        
         # # 1) 질문 리스트
         questions = {
             "cause": "이 영상의 시청 이탈 원인을 설명해 주세요.",
@@ -110,6 +125,9 @@ async def analyze_leave(video: Video, token: str) -> str:
         improvement_chunk = await content_repository.search_similar_K(questions["improvement"],SourceTypeEnum.VIEWER_ESCAPE_ANALYSIS.value.upper(),str(video_id),meta ,3)
         # 이탈 원인 질문의 상위 3개 청킹 데이터 조회 
         editing_flow_chunk = await content_repository.search_similar_K(questions["editing_flow"],SourceTypeEnum.VIEWER_ESCAPE_ANALYSIS.value.upper(),str(video_id),meta ,3)
+        
+        similarity_time = time.time() - similarity_start
+        logger.info(f"🔍 유사도 검색 완료 ({similarity_time:.2f}초)")
 
 
         # llm 출력
@@ -139,7 +157,12 @@ async def analyze_leave(video: Video, token: str) -> str:
         formatted_prompt = prompt_template_str.format(**context_data)  
     
         # 10. LLM 직접 호출해서 결과 가져오기
+        llm_start = time.time()
+        logger.info("🤖 LLM 이탈 분석 실행 중...")
         result = rag_service.execute_llm_direct(formatted_prompt)
+        llm_time = time.time() - llm_start
+        logger.info(f"🤖 LLM 이탈 분석 완료 ({llm_time:.2f}초)")
+        
         return result
 
     except Exception as e:
