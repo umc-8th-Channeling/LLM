@@ -30,6 +30,7 @@ class IdeaService:
             summary = await self.wait_for_summary(report_id)
             if not summary:
                 logger.warning(f"Report ID {report_id}에 대한 요약본을 찾을 수 없어 아이디어 생성을 건너뜁니다.")
+                summary = ""
 
             # 아이디어 분석 요청
             idea_results = await self.rag_service.analyze_idea(video, channel, summary)
