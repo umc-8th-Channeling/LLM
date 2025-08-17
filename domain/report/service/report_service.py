@@ -169,9 +169,15 @@ class ReportService:
         Returns:
             성공 시 True, 실패 시 False
         """
+        start_time = time.time()
+        logger.info(f"⚙️ 알고리즘 최적화 분석 시작 - Report ID: {report_id}")
+        
         try:
-            # 알고리즘 최적화 분석
-            analyze_opt = await self.rag_service.analyze_algorithm_optimization(video_id=video.youtube_video_id)
+            # 알고리즘 최적화 분석 (LLM API 호출)
+            opt_start = time.time()
+            analyze_opt = await self.rag_service.analyze_algorithm_optimization(video_id=video.youtube_video_id, skip_vector_save=skip_vector_save)
+            opt_time = time.time() - opt_start
+            logger.info(f"⚙️ 알고리즘 최적화 LLM 분석 완료 ({opt_time:.2f}초)")
             
             # Vector DB에 저장 (skip_vector_save가 False인 경우만)
             if not skip_vector_save:
@@ -184,14 +190,21 @@ class ReportService:
                 logger.info("[V2] 벡터 DB 저장을 스킵했습니다.")
             
             # MySQL에 저장
+            mysql_start = time.time()
             await self.report_repository.save({
                 "id": report_id,
                 "optimization": analyze_opt
             })
+            mysql_time = time.time() - mysql_start
+            logger.info(f"🗄️ 알고리즘 최적화 분석 MySQL DB 저장 완료 ({mysql_time:.2f}초)")
             
+            total_time = time.time() - start_time
+            logger.info(f"⚙️ 알고리즘 최적화 분석 전체 완료 ({total_time:.2f}초)")
             return True
             
         except Exception as e:
+            total_time = time.time() - start_time
+            logger.error(f"⚙️ 알고리즘 최적화 분석 실패 ({total_time:.2f}초): {e}")
             raise
 
     async def analyze_trends_and_save(self, video: Video, report_id: int, skip_vector_save: bool = False) -> bool:
