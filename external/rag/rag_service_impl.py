@@ -38,6 +38,11 @@ class RagServiceImpl(RagService):
         print("정리된 자막 = ", context)
         print()
         
+
+        # 자막이 없는 경우 바로 메시지 반환
+        if not context or context.strip() == "":
+            return "자막을 불러올 수 없는 영상입니다."
+
         query = "유튜브 영상 자막을 기반으로 10초 단위 개요를 위의 형식에 따라 작성해주세요."
         return self.execute_llm_chain(context, query, PromptTemplateManager.get_video_summary_prompt())
     
