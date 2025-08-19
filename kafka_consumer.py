@@ -9,8 +9,8 @@ logger = logging.getLogger(__name__)
 
 
 async def main():
-    """Kafka Consumer 시작"""
-    logger.info("= Kafka Consumer 시작...")
+    """Kafka Consumer V1 시작"""
+    logger.info("= Kafka Consumer V1 시작...")
   
     report_consumer = ReportConsumer(kafka_broker)
     report_consumer.register_handler("overview-topic", report_consumer.handle_overview)
@@ -20,23 +20,23 @@ async def main():
     # Consumer 시작
     topics = ["overview-topic", "analysis-topic", "idea-topic"]
     await report_consumer.start_consuming(topics)        
-    logger.info(f"= Kafka Consumer 시작: {topics}")
+    logger.info(f"= Kafka Consumer V1 시작: {topics}")
 
     # Kafka Broker 시작
     await kafka_broker.start()
-    logger.info("= Kafka Broker 시작 완료")
+    logger.info("= Kafka Broker V1 시작 완료")
 
     try:
         
         while True:
             await asyncio.sleep(1)
     except KeyboardInterrupt:
-        logger.info("= Kafka Consumer 중단 요청")
+        logger.info("= Kafka Consumer V1 중단 요청")
     finally:
         
         await report_consumer.stop_consuming()
         await kafka_broker.close()
-        logger.info("= Kafka Consumer 중단 완료")
+        logger.info("= Kafka Consumer V1 중단 완료")
 
 
 if __name__ == '__main__':

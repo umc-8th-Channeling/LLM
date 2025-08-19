@@ -25,7 +25,7 @@ from external.youtube.youtube_comment_service import YoutubeCommentService
 
 logger = logging.getLogger(__name__)
 
-class ReportConsumerImpl(ReportConsumer):
+class ReportConsumerImplV2(ReportConsumer):
     def __init__(self, broker):
         super().__init__(broker)
         self.rag_service = RagServiceImpl()
@@ -82,8 +82,8 @@ class ReportConsumerImpl(ReportConsumer):
         return report, video
 
 
-    async def handle_overview(self, message: Dict[str, Any]):
-        logger.info(f"[V1] Handling overview request")
+    async def handle_overview_v2(self, message: Dict[str, Any]):
+        logger.info(f"[V2] Handling overview request")
 
         start_time = time.time()  # 시작 시간 기록
 
@@ -96,9 +96,12 @@ class ReportConsumerImpl(ReportConsumer):
             report, video = result
             report_id = report.id  
 
-            # 요약 프로세스
+            # 요약 프로세스 (skip_vector_save=True)
+            skip_vector_save = message.get("skip_vector_save", False)
+            logger.info(f"[V2] skip_vector_save: {skip_vector_save}")
+            
             try:
-                await self.report_service.create_summary(video, report_id)
+                await self.report_service.create_summary(video, report_id, skip_vector_save=skip_vector_save)
             except Exception as e:
                 logger.error(f"요약 프로세스 실패: {e!r}")
                 raise
@@ -141,13 +144,13 @@ class ReportConsumerImpl(ReportConsumer):
         finally:
             end_time = time.time()  # 종료 시간 기록
             elapsed_time = end_time - start_time
-            logger.info(f"[V1] handle_overview 전체 처리 시간: {elapsed_time:.3f}초")
+            logger.info(f"[V2] handle_overview 전체 처리 시간: {elapsed_time:.3f}초")
 
         
 
-    async def handle_analysis(self, message: Dict[str, Any]):
+    async def handle_analysis_v2(self, message: Dict[str, Any]):
         """보고서 분석 요청 처리"""
-        logger.info(f"[V1] Handling analysis request")
+        logger.info(f"[V2] Handling analysis request")
         start_time = time.time()  # 시작 시간 기록
         
         try:
@@ -158,17 +161,20 @@ class ReportConsumerImpl(ReportConsumer):
             
             report, video = result
             
-            # 시청자 이탈 분석 프로세스
+            # 시청자 이탈 분석 프로세스 (skip_vector_save=True)
+            skip_vector_save = message.get("skip_vector_save", False)
+            logger.info(f"[V2] skip_vector_save: {skip_vector_save}")
+            
             try:
                 token = message.get("google_access_token")
-                await self.report_service.analyze_viewer_retention(video, report.id, token)
+                await self.report_service.analyze_viewer_retention(video, report.id, token, skip_vector_save=skip_vector_save)
             except Exception as e:
                 logger.error(f"시청자 이탈 분석 프로세스 실패: {e!r}")
                 raise
                 
-            # 알고리즘 최적화 분석 프로세스
+            # 알고리즘 최적화 분석 프로세스 (skip_vector_save=True)
             try:
-                await self.report_service.analyze_optimization(video, report.id)
+                await self.report_service.analyze_optimization(video, report.id, skip_vector_save=skip_vector_save)
             except Exception as e:
                 logger.error(f"알고리즘 최적화 분석 프로세스 실패: {e!r}")
                 raise
@@ -195,12 +201,12 @@ class ReportConsumerImpl(ReportConsumer):
         finally:
             end_time = time.time()  # 종료 시간 기록
             elapsed_time = end_time - start_time
-            logger.info(f"[V1] handle_analysis 전체 처리 시간: {elapsed_time:.3f}초")
+            logger.info(f"[V2] handle_analysis 전체 처리 시간: {elapsed_time:.3f}초")
 
 
-    async def handle_idea(self, message: Dict[str, Any]):
+    async def handle_idea_v2(self, message: Dict[str, Any]):
         """보고서 아이디어 요청 처리"""
-        logger.info(f"[V1] Handling idea request")
+        logger.info(f"[V2] Handling idea request")
         start_time = time.time()  # 시작 시간 기록
         try:
             # 공통 메서드로 report와 video 정보 조회
@@ -209,9 +215,12 @@ class ReportConsumerImpl(ReportConsumer):
                 return
             report, video = result
             report_id = report.id
-            # 트렌드 분석 및 키워드 저장 프로세스
+            # 트렌드 분석 및 키워드 저장 프로세스 (skip_vector_save=True)
+            skip_vector_save = message.get("skip_vector_save", False)
+            logger.info(f"[V2] skip_vector_save: {skip_vector_save}")
+            
             try:
-                await self.report_service.analyze_trends_and_save(video, report_id)
+                await self.report_service.analyze_trends_and_save(video, report_id, skip_vector_save=skip_vector_save)
             except Exception as e:
                 logger.error(f"트렌드 분석 및 키워드 저장 프로세스 실패: {e!r}")
                 raise
@@ -256,4 +265,4 @@ class ReportConsumerImpl(ReportConsumer):
         finally:
             end_time = time.time()  # 종료 시간 기록
             elapsed_time = end_time - start_time
-            logger.info(f"[V1] handle_idea 처리 완료 (소요 시간: {elapsed_time:.2f}초)")
+            logger.info(f"[V2] handle_idea 처리 완료 (소요 시간: {elapsed_time:.2f}초)")

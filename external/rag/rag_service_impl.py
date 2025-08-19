@@ -19,6 +19,8 @@ from typing import List, Dict, Any
 from datetime import datetime
 import json
 import logging
+import time
+
 
 logger = logging.getLogger(__name__)
 
@@ -100,10 +102,13 @@ class RagServiceImpl(RagService):
             """
             logging.info("아이디어 내 채널 확인 : %s", origin_context)
 
-            # 2. 인기 동영상 목록 유튜브 호출
+            # 2. 인기 동영상 목록 유튜브 호출 (YouTube API)
+            api_start = time.time()
+            logger.info("📱 YouTube 인기 동영상 API 호출 중...")
             category_id = video.video_category.value
             popular_videos = self.youtube_video_service.get_category_popular(category_id)
-            logging.info(f"아이디어 - 유튜브 인기 동영상 추출 완료")
+            api_time = time.time() - api_start
+            logger.info(f"📱 YouTube 인기 동영상 API 호출 완료 ({api_time:.2f}초) - {len(popular_videos)}개 영상")
 
             # 3. 텍스트로 변환하여 Vector DB에 저장
             for popular in popular_videos:
@@ -113,7 +118,9 @@ class RagServiceImpl(RagService):
                     source_id=video.id,
                     context=pop_video_text)
 
-            # 4. 영상과 의미적으로 가장 유사한 '인기 영상' 청크를 검색
+            # 4. 영상과 의미적으로 가장 유사한 '인기 영상' 청크를 검색 (Vector DB)
+            search_start = time.time()
+            logger.info("🔍 유사 인기 영상 벡터 검색 중...")
             query_text = f"제목: {video.title}, 설명: {video.description}, 카테고리: {video.video_category.name}"
             video_embedding = await self.content_chunk_repository.generate_embedding(query_text)
             meta_data = {"query_embedding": str(video_embedding)}
@@ -121,11 +128,15 @@ class RagServiceImpl(RagService):
             similar_chunks = await self.content_chunk_repository.search_similar_by_embedding(
                 SourceTypeEnum.IDEA_RECOMMENDATION, metadata=meta_data, limit=5
             )
+            search_time = time.time() - search_start
+            logger.info(f"🔍 유사 인기 영상 벡터 검색 완료 ({search_time:.2f}초) - {len(similar_chunks)}개 청크")
 
             # 5. 검색된 청크(내용)를 텍스트로
             popularity_context = "\n".join([chunk.get("content", "") for chunk in similar_chunks])
 
             # 프롬프트 생성 및 LLM 실행
+            llm_start = time.time()
+            logger.info("🤖 아이디어 생성 LLM 실행 중...")
             query = "트렌드 분석 후, 이 유튜브 영상과 관련된 새 컨텐츠에 대한 아이디어를 3개 생성해주세요."
             chain = PromptTemplateManager.get_idea_prompt | self.llm
             result_str = await chain.ainvoke({
@@ -133,6 +144,8 @@ class RagServiceImpl(RagService):
                 "origin": origin_context,
                 "popularity": popularity_context
             })
+            llm_time = time.time() - llm_start
+            logger.info(f"🤖 아이디어 생성 LLM 실행 완료 ({llm_time:.2f}초)")
 
             # LLM의 응답 문자열을 JSON 파싱
             clean_json_str = result_str.content.strip().replace("```json", "").replace("```", "")
@@ -142,7 +155,7 @@ class RagServiceImpl(RagService):
             raise e
 
     
-    async def analyze_algorithm_optimization(self, video_id: str) -> str:
+    async def analyze_algorithm_optimization(self, video_id: str, skip_vector_save: bool = False) -> str:
         """
         유튜브 알고리즘 최적화 분석
         
@@ -153,15 +166,23 @@ class RagServiceImpl(RagService):
             알고리즘 최적화 분석 결과
         """
         try:
-            # 영상 상세 정보 조회
+            # 영상 상세 정보 조회 (YouTube API)
+            video_start = time.time()
+            logger.info("📹 YouTube 영상 상세 정보 API 호출 중...")
             video_details = self.video_detail_service.get_video_details(video_id)
+            video_time = time.time() - video_start
+            logger.info(f"📹 YouTube 영상 상세 정보 API 호출 완료 ({video_time:.2f}초)")
             
-            # 채널 정보 조회
+            # 채널 정보 조회 (YouTube API)
             channel_id = video_details.get('channelId')
             
             channel_stats = {}
             if channel_id:
+                channel_start = time.time()
+                logger.info("📺 YouTube 채널 통계 API 호출 중...")
                 channel_stats = self.video_detail_service.get_channel_stats(channel_id)
+                channel_time = time.time() - channel_start
+                logger.info(f"📺 YouTube 채널 통계 API 호출 완료 ({channel_time:.2f}초)")
             
             # 분석에 필요한 데이터 구조화
             optimization_data = {
@@ -184,28 +205,32 @@ class RagServiceImpl(RagService):
                 }
             }
             
-            # 유사한 이전 알고리즘 최적화 분석 사례 검색
-            query_text = f"제목: {video_details.get('title', '')}, 설명: {video_details.get('description', '')[:200]}"
-            similar_chunks = await self.content_chunk_repository.search_similar_optimization(
-                query_text=query_text,
-                limit=3
-            )
-            
             # JSON 형식으로 context 생성
             context = json.dumps(optimization_data, ensure_ascii=False, indent=2)
             
-            # 이전 분석 사례가 있으면 context에 추가
-            if similar_chunks:
-                previous_cases = "\n\n---\n\n".join([chunk.get("content", "") for chunk in similar_chunks])
-                context += f"\n\n## 유사 영상의 이전 최적화 분석 사례:\n{previous_cases}"
-                logger.info(f"유사한 이전 분석 사례 {len(similar_chunks)}개를 context에 추가했습니다.")
+            # 유사한 이전 알고리즘 최적화 분석 사례 검색 (skip_vector_save가 False인 경우만)
+            if not skip_vector_save:
+                query_text = f"제목: {video_details.get('title', '')}, 설명: {video_details.get('description', '')[:200]}"
+                similar_chunks = await self.content_chunk_repository.search_similar_optimization(
+                    query_text=query_text,
+                    limit=3
+                )
+                
+                # 이전 분석 사례가 있으면 context에 추가
+                if similar_chunks:
+                    previous_cases = "\n\n---\n\n".join([chunk.get("content", "") for chunk in similar_chunks])
+                    context += f"\n\n## 유사 영상의 이전 최적화 분석 사례:\n{previous_cases}"
             
             query = "이 유튜브 영상의 알고리즘 최적화 상태를 분석하고 구체적인 개선 방안을 제시해주세요."
             
-            # 프롬프트 템플릿 가져오기
+            # 프롬프트 템플릿 가져오기 및 LLM 실행
+            llm_start = time.time()
             prompt_template = PromptTemplateManager.get_algorithm_optimization_prompt()
+            result = self.execute_llm_chain(context, query, prompt_template)
+            llm_time = time.time() - llm_start
+            logger.info(f"🤖 알고리즘 최적화 LLM 실행 완료 ({llm_time:.2f}초)")
             
-            return self.execute_llm_chain(context, query, prompt_template)
+            return result
         
         except Exception as e:
             logger.error(f"알고리즘 최적화 분석 중 오류 발생: {e}")
@@ -223,8 +248,12 @@ class RagServiceImpl(RagService):
         Returns:
             분석된 트렌드 정보
         """
-        # 1. Google Trends에서 실시간 트렌드 가져오기
+        # 1. Google Trends에서 실시간 트렌드 가져오기 (Google Trends API)
+        trends_start = time.time()
+        logger.info("📈 Google Trends 실시간 트렌드 API 호출 중...")
         raw_trends = self.trend_service.get_realtime_trends(limit=limit*2, geo=geo)  # 여유있게 가져오기
+        trends_time = time.time() - trends_start
+        logger.info(f"📈 Google Trends 실시간 트렌드 API 호출 완료 ({trends_time:.2f}초) - {len(raw_trends) if raw_trends else 0}개 트렌드")
         
         if not raw_trends:
             return {"error": "트렌드 데이터를 가져올 수 없습니다."}
@@ -243,11 +272,15 @@ class RagServiceImpl(RagService):
         prompt_template = PromptTemplateManager.get_trend_analysis_prompt()
         
         # 5. LLM 실행 및 결과 파싱
+        llm_start = time.time()
+        logger.info("🤖 실시간 트렌드 분석 LLM 실행 중...")
         result_str = self.execute_llm_chain(
             context=json.dumps(context, ensure_ascii=False),
             query=query,
             prompt_template_str=prompt_template
         )
+        llm_time = time.time() - llm_start
+        logger.info(f"🤖 실시간 트렌드 분석 LLM 실행 완료 ({llm_time:.2f}초)")
         
         try:
             clean_json_str = result_str.strip().replace("```json", "").replace("```", "")
@@ -301,6 +334,8 @@ class RagServiceImpl(RagService):
         ])
         
         # 체인 실행
+        llm_start = time.time()
+        logger.info("🤖 채널 맞춤형 트렌드 분석 LLM 실행 중...")
         combine_chain = create_stuff_documents_chain(self.llm, chat_prompt)
         result_str = combine_chain.invoke({
             "input": query,
@@ -309,6 +344,8 @@ class RagServiceImpl(RagService):
             "target_audience": target_audience,
             "current_date": current_date
         })
+        llm_time = time.time() - llm_start
+        logger.info(f"🤖 채널 맞춤형 트렌드 분석 LLM 실행 완료 ({llm_time:.2f}초)")
         
         
         try:
