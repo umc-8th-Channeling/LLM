@@ -57,9 +57,10 @@ async def analyze_leave(video: Video, token: str) -> str:
         # 대본 스크립트 가져오기
         logger.info("영상 자막 데이터 가져오는 중...")
         context = transcript_service.get_structured_transcript(youtube_video_id)
+
         if not context:
             logger.error("자막 데이터를 가져올 수 없습니다.")
-            raise ValueError("자막 데이터가 없습니다.")
+            return "자막을 불러올 수 없는 영상입니다."
         
         # 3. 스크립트를 사용해서 영상 총 길이 구하기
         video_length = context[-1]["end_time"]
