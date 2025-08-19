@@ -234,11 +234,12 @@ class CommentService:
     # 유튜브 api 에서 가져온 댓글을 Comment 객체로 변환
     async def convert_to_comment_objects(self, comments: list[dict]) -> list[Comment]:
         comment_objects = []
+
         for data in comments:
             comment = Comment(
                 comment_type=data.get("comment_type", None),
-                content=data["content"],
-                report_id=data["report_id"],
+                content=data.get("content", ""),
+                report_id=data.get("report_id"),
             )
             comment_objects.append(comment)
         return comment_objects
