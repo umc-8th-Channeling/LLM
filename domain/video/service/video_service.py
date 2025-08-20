@@ -4,7 +4,6 @@ from decimal import Decimal, ROUND_DOWN
 import isodate
 
 import numpy as np
-from rich.diagnose import report
 
 from core.enums.avg_type import AvgType
 from domain.content_chunk.repository.content_chunk_repository import ContentChunkRepository
