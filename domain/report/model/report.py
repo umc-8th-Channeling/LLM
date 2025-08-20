@@ -1,4 +1,5 @@
 from datetime import datetime
+from core.utils.datetime_utils import get_kst_now_naive
 from typing import Optional
 from sqlmodel import SQLModel, Field, Column
 from sqlalchemy import Text
@@ -49,5 +50,5 @@ class Report(SQLModel, table=True):
     optimization: str = Field(sa_column=Column(Text), description="알고리즘 최적화")
     
     # BaseEntity 상속 부분 (created_at, updated_at)
-    created_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
-    updated_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
+    created_at: Optional[datetime] = Field(default_factory=get_kst_now_naive)
+    updated_at: Optional[datetime] = Field(default_factory=get_kst_now_naive)

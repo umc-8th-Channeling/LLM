@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Optional
 
 from sqlmodel import SQLModel, Field
+from core.utils.datetime_utils import get_kst_now_naive
 
 
 class Channel(SQLModel, table=True):
@@ -32,6 +33,6 @@ class Channel(SQLModel, table=True):
     channel_update_at: datetime = Field(description="채널 업데이트 날짜")
 
     # BaseEntity 상속 부분 (created_at, updated_at)
-    created_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
-    updated_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
+    created_at: Optional[datetime] = Field(default_factory=get_kst_now_naive)
+    updated_at: Optional[datetime] = Field(default_factory=get_kst_now_naive)
 
