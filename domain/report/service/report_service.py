@@ -2,6 +2,7 @@ from typing import DefaultDict, List, Any
 import logging
 import json
 import asyncio
+import time
 from domain.comment.model.comment import Comment
 from domain.report.repository.report_repository import ReportRepository
 from domain.content_chunk.repository.content_chunk_repository import ContentChunkRepository
@@ -24,17 +25,21 @@ class ReportService:
         self.channel_repository = ChannelRepository()
         self.rag_service = RagServiceImpl()
 
-    async def create_summary(self, video: Video, report_id: int) -> bool:
+    async def create_summary(self, video: Video, report_id: int, skip_vector_save: bool = False) -> bool:
         """
         영상 요약을 생성하고 Vector DB와 MySQL에 저장
         
         Args:
             video: 비디오 객체
             report_id: 리포트 ID
+            skip_vector_save: Vector DB 저장 스킵 여부 (기본값: False)
             
         Returns:
             성공 시 True, 실패 시 False
         """
+        start_time = time.time()
+        logger.info(f"📄 요약 생성 시작 - Report ID: {report_id}")
+        
         try:
             # 유튜브 영상 아이디 조회
             youtube_video_id = getattr(video, "youtube_video_id", None)
@@ -42,32 +47,44 @@ class ReportService:
                 logger.error("YouTube 영상 ID가 없습니다.")
                 return False
             
-            # 요약 생성
+            # 요약 생성 (LLM API 호출)
+            summary_start = time.time()
             summary = self.rag_service.summarize_video(youtube_video_id)
+            summary_time = time.time() - summary_start
+            logger.info(f"🤖 LLM API 요약 생성 완료 ({summary_time:.2f}초)")
             logger.info("요약 결과:\n%s", summary)
             
-            # 벡터 DB에 저장
-            await self.content_chunk_repository.save_context(
-                source_type=SourceTypeEnum.VIDEO_SUMMARY,
-                source_id=report_id,
-                context=summary
-            )
-            logger.info("요약 결과를 벡터 DB에 저장했습니다.")
+            # 벡터 DB에 저장 (skip_vector_save가 False인 경우만)
+            if not skip_vector_save:
+                await self.content_chunk_repository.save_context(
+                    source_type=SourceTypeEnum.VIDEO_SUMMARY,
+                    source_id=report_id,
+                    context=summary
+                )
+                logger.info("요약 결과를 벡터 DB에 저장했습니다.")
+            else:
+                logger.info("[V2] 벡터 DB 저장을 스킵했습니다.")
             
             # MySQL에 저장
+            mysql_start = time.time()
             await self.report_repository.save({
                 "id": report_id,
                 "summary": summary,
                 "title": video.title
             })
-            logger.info("요약 결과를 MYSQL DB에 저장했습니다.")
+            mysql_time = time.time() - mysql_start
+            logger.info(f"🗄️ MySQL DB 저장 완료 ({mysql_time:.2f}초)")
             
+            total_time = time.time() - start_time
+            logger.info(f"📄 요약 생성 전체 완료 ({total_time:.2f}초)")
             return True
             
         except Exception as e:
+            total_time = time.time() - start_time
+            logger.error(f"📄 요약 생성 실패 ({total_time:.2f}초): {e}")
             raise
 
-    async def analyze_viewer_retention(self, video: Video, report_id: int, token: str) -> bool:
+    async def analyze_viewer_retention(self, video: Video, report_id: int, token: str, skip_vector_save: bool = False) -> bool:
         """
         시청자 이탈 분석 (재시도 로직 포함)
         
@@ -75,19 +92,26 @@ class ReportService:
             video: 비디오 객체
             report_id: 리포트 ID
             token: Google 액세스 토큰
+            skip_vector_save: Vector DB 저장 스킵 여부 (기본값: False)
             
         Returns:
             성공 시 True, 실패 시 False
         """
+        start_time = time.time()
+        logger.info(f"📊 시청자 이탈 분석 시작 - Report ID: {report_id}")
+        
         try:
             leave_result = None
             max_retries = 3
             retry_count = 0
             
-            # 재시도 로직
+            # 재시도 로직 (이탈 분석 API 호출)
+            api_start = time.time()
             while retry_count < max_retries:
                 try:
                     leave_result = await leave_analyize.analyze_leave(video, token)
+                    api_time = time.time() - api_start
+                    logger.info(f"📈 이탈 분석 API 호출 완료 ({api_time:.2f}초)")
                     break  # 성공하면 루프 종료
                     
                 except (AttributeError, TypeError, KeyError):
@@ -112,12 +136,15 @@ class ReportService:
                         # 네트워크 에러가 아닌 경우 즉시 종료
                         raise
             
-            # Vector DB에 저장
-            await self.content_chunk_repository.save_context(
-                source_type=SourceTypeEnum.VIEWER_ESCAPE_ANALYSIS,
-                source_id=report_id,
-                context=leave_result
-            )
+            # Vector DB에 저장 (skip_vector_save가 False인 경우만)
+            if not skip_vector_save:
+                await self.content_chunk_repository.save_context(
+                    source_type=SourceTypeEnum.VIEWER_ESCAPE_ANALYSIS,
+                    source_id=report_id,
+                    context=leave_result
+                )
+            else:
+                logger.info("[V2] 벡터 DB 저장을 스킵했습니다.")
             
             # MySQL에 저장
             await self.report_repository.save({
@@ -130,50 +157,71 @@ class ReportService:
         except Exception as e:
             raise
 
-    async def analyze_optimization(self, video: Video, report_id: int) -> bool:
+    async def analyze_optimization(self, video: Video, report_id: int, skip_vector_save: bool = False) -> bool:
         """
         알고리즘 최적화 분석
         
         Args:
             video: 비디오 객체
             report_id: 리포트 ID
+            skip_vector_save: Vector DB 저장 스킵 여부 (기본값: False)
             
         Returns:
             성공 시 True, 실패 시 False
         """
+        start_time = time.time()
+        logger.info(f"⚙️ 알고리즘 최적화 분석 시작 - Report ID: {report_id}")
+        
         try:
-            # 알고리즘 최적화 분석
-            analyze_opt = await self.rag_service.analyze_algorithm_optimization(video_id=video.youtube_video_id)
+            # 알고리즘 최적화 분석 (LLM API 호출)
+            opt_start = time.time()
+            analyze_opt = await self.rag_service.analyze_algorithm_optimization(video_id=video.youtube_video_id, skip_vector_save=skip_vector_save)
+            opt_time = time.time() - opt_start
+            logger.info(f"⚙️ 알고리즘 최적화 LLM 분석 완료 ({opt_time:.2f}초)")
             
-            # Vector DB에 저장
-            await self.content_chunk_repository.save_context(
-                source_type=SourceTypeEnum.ALGORITHM_OPTIMIZATION,
-                source_id=report_id,
-                context=analyze_opt
-            )
+            # Vector DB에 저장 (skip_vector_save가 False인 경우만)
+            if not skip_vector_save:
+                await self.content_chunk_repository.save_context(
+                    source_type=SourceTypeEnum.ALGORITHM_OPTIMIZATION,
+                    source_id=report_id,
+                    context=analyze_opt
+                )
+            else:
+                logger.info("[V2] 벡터 DB 저장을 스킵했습니다.")
             
             # MySQL에 저장
+            mysql_start = time.time()
             await self.report_repository.save({
                 "id": report_id,
                 "optimization": analyze_opt
             })
+            mysql_time = time.time() - mysql_start
+            logger.info(f"🗄️ 알고리즘 최적화 분석 MySQL DB 저장 완료 ({mysql_time:.2f}초)")
             
+            total_time = time.time() - start_time
+            logger.info(f"⚙️ 알고리즘 최적화 분석 전체 완료 ({total_time:.2f}초)")
             return True
             
         except Exception as e:
+            total_time = time.time() - start_time
+            logger.error(f"⚙️ 알고리즘 최적화 분석 실패 ({total_time:.2f}초): {e}")
             raise
 
-    async def analyze_trends_and_save(self, video: Video, report_id: int) -> bool:
+    async def analyze_trends_and_save(self, video: Video, report_id: int, skip_vector_save: bool = False) -> bool:
         """
         트렌드 분석 및 키워드 저장
         
         Args:
             video: 비디오 객체
             report_id: 리포트 ID
+            skip_vector_save: Vector DB 저장 스킵 여부 (기본값: False)
             
         Returns:
             성공 시 True, 실패 시 False
         """
+        start_time = time.time()
+        logger.info(f"📊 트렌드 분석 시작 - Report ID: {report_id}")
+        
         try:
             # 1. 실시간 트렌드 분석
             realtime_keyword = self.rag_service.analyze_realtime_trends()
@@ -196,13 +244,16 @@ class ReportService:
                 target_audience=target_audience
             )
             
-            # 4. Vector DB에 채널 맞춤형 키워드 저장
-            await self.content_chunk_repository.save_context(
-                source_type=SourceTypeEnum.PERSONALIZED_KEYWORDS,
-                source_id=report_id,
-                context=json.dumps(channel_keyword, ensure_ascii=False)
-            )
-            logger.info("채널 맞춤형 키워드를 Vector DB에 저장했습니다.")
+            # 4. Vector DB에 채널 맞춤형 키워드 저장 (skip_vector_save가 False인 경우만)
+            if not skip_vector_save:
+                await self.content_chunk_repository.save_context(
+                    source_type=SourceTypeEnum.PERSONALIZED_KEYWORDS,
+                    source_id=report_id,
+                    context=json.dumps(channel_keyword, ensure_ascii=False)
+                )
+                logger.info("채널 맞춤형 키워드를 Vector DB에 저장했습니다.")
+            else:
+                logger.info("[V2] 벡터 DB 저장을 스킵했습니다.")
             
             # 5. MySQL에 키워드 저장
             # 실시간 트렌드 키워드 저장
@@ -234,9 +285,14 @@ class ReportService:
                 
                 await self.trend_keyword_repository.save_bulk(channel_keywords_to_save)
                 logger.info("채널 맞춤형 키워드를 MySQL DB에 저장했습니다.")
+            
+            total_time = time.time() - start_time
+            logger.info(f"📊 트렌드 분석 전체 완료 ({total_time:.2f}초)")
             return True
             
         except Exception as e:
+            total_time = time.time() - start_time
+            logger.error(f"📊 트렌드 분석 실패 ({total_time:.2f}초): {e}")
             raise
 
     async def update_report_emotion_counts(self, report_id: int, comment_dict:DefaultDict[str,List[Comment]]) -> bool:

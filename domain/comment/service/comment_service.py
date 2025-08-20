@@ -2,6 +2,7 @@ import random
 from collections import defaultdict
 from typing import List, DefaultDict
 import logging
+import time
 from domain.comment.model.comment import Comment
 from domain.comment.model.comment_type import CommentType
 from domain.comment.repository.comment_repository import CommentRepository
@@ -22,6 +23,8 @@ class CommentService:
     async def summarize_comments_by_emotions_with_llm(self, comments_by_emotions: DefaultDict[CommentType, list[Comment]]) -> defaultdict[CommentType, List[Comment]]:
         summarized_comments: defaultdict[CommentType, List[Comment]] = defaultdict(list)
 
+        summarize_and_save_start = time.time()
+        logger.info("📝 댓글 감정별 요약 및 저장 시작")
         # 감정별로 요약
         for emotion, comments in comments_by_emotions.items():
             if not comments:
@@ -32,8 +35,10 @@ class CommentService:
 
             # LLM 서비스 호출 -> returns list[str]
             summarized_contents = self.rag_service.summarize_comments(contents_str)
+            
 
 
+            
             # 요약 내용을 defaultdict에 추가 & DB 저장
             comments_to_save = []
             for content in summarized_contents:
@@ -51,6 +56,8 @@ class CommentService:
                 })
             await self.comment_repository.save_bulk(comments_to_save)
             logger.info("댓글 결과를 MYSQL DB에 저장했습니다.")
+        summarize_and_save_time = time.time() - summarize_and_save_start
+        logger.info(f"📝 댓글 감정별 요약 및 저장 완료 ({summarize_and_save_time:.2f}초)")
         return summarized_comments
 
     async def classify_comment_with_llm(self, comment: Comment) -> Comment:
@@ -112,11 +119,14 @@ class CommentService:
         sampled_comments, is_sampled = self.sample_comments(all_comments)
         
         # 2. 샘플링된 댓글만 LLM으로 감정 분류
-        logger.info(f"LLM 감정 분류 시작: {len(sampled_comments)}개 댓글")
+        llm_classify_start = time.time()
+        logger.info(f"🤖 LLM 감정 분류 시작: {len(sampled_comments)}개 댓글")
         sample_grouped = defaultdict(list)
         for comment in sampled_comments:
             result = await self.classify_comment_with_llm(comment)
             sample_grouped[result.comment_type].append(result)
+        llm_classify_time = time.time() - llm_classify_start
+        logger.info(f"🤖 LLM 감정 분류 완료 ({llm_classify_time:.2f}초)")
         
         # 3. 샘플링하지 않은 경우 같은 데이터 두 번 반환
         if not is_sampled:
@@ -171,6 +181,9 @@ class CommentService:
         Returns:
             성공 시 True, 실패 시 False
         """
+        start_time = time.time()
+        logger.info(f"💬 댓글 분석 시작 - Report ID: {report_id}")
+        
         try:
             # 유튜브 영상 아이디 조회
             youtube_video_id = getattr(video, "youtube_video_id", None)
@@ -178,14 +191,17 @@ class CommentService:
                 logger.error("YouTube 영상 ID가 없습니다.")
                 return False
             
-            # 댓글 정보 조회
+            # 댓글 정보 조회 (YouTube API)
+            api_start = time.time()
             comments_by_youtube = await self.youtube_comment_service.get_comments(youtube_video_id, report_id)
+            api_time = time.time() - api_start
+            logger.info(f"💬 YouTube 댓글 API 호출 완료 ({api_time:.2f}초) - {len(comments_by_youtube)}개 댓글")
             
             # Comment 객체로 변환
             comments_obj = await self.convert_to_comment_objects(comments_by_youtube)
             
-            # 최적화된 감정 분류 사용
-            logger.info(f"총 {len(comments_obj)}개 댓글 분석 시작")
+            # 최적화된 감정 분류 사용 (LLM API 호출)
+            logger.info(f"🧠 총 {len(comments_obj)}개 댓글 감정 분류 시작")
             all_classified_result, sampled_result = await self.gather_classified_comments_optimized(comments_obj)
             
             # 전체 댓글 개수 저장 (스케일링된 전체 개수)
@@ -193,28 +209,37 @@ class CommentService:
             logger.info(f"전체 댓글 감정 분포 (스케일링 포함): {total_count_dict}")
             
             # 감정별 요약 생성 (샘플링된 댓글만 사용 - 정확한 감정 분류 보장)
-            logger.info(f"요약 생성에 사용할 샘플링된 댓글: {sum(len(c) for c in sampled_result.values())}개")
+            summary_start = time.time()
+            logger.info(f"📝 요약 생성에 사용할 샘플링된 댓글: {sum(len(c) for c in sampled_result.values())}개")
             summarized_comments = await self.summarize_comments_by_emotions_with_llm(sampled_result)
+            summary_time = time.time() - summary_start
+            logger.info(f"📝 댓글 요약 생성 완료 ({summary_time:.2f}초)")
             
             # 감정별 댓글 개수 업데이트 (전체 개수 사용)
+            db_start = time.time()
             count_dict = total_count_dict
-            logger.info("댓글 개수를 MYSQL DB에 저장합니다.")
             await self.report_repository.update_count(report_id, count_dict)
+            db_time = time.time() - db_start
+            logger.info(f"🗄️ 댓글 개수 DB 저장 완료 ({db_time:.2f}초)")
             
-            logger.info("댓글 분석이 완료되었습니다.")
+            total_time = time.time() - start_time
+            logger.info(f"💬 댓글 분석 전체 완료 ({total_time:.2f}초)")
             return True
             
         except Exception as e:
+            total_time = time.time() - start_time
+            logger.error(f"💬 댓글 분석 실패 ({total_time:.2f}초): {e}")
             raise
 
     # 유튜브 api 에서 가져온 댓글을 Comment 객체로 변환
     async def convert_to_comment_objects(self, comments: list[dict]) -> list[Comment]:
         comment_objects = []
+
         for data in comments:
             comment = Comment(
                 comment_type=data.get("comment_type", None),
-                content=data["content"],
-                report_id=data["report_id"],
+                content=data.get("content", ""),
+                report_id=data.get("report_id"),
             )
             comment_objects.append(comment)
         return comment_objects

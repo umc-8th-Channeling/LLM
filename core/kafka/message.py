@@ -16,5 +16,6 @@ class Message(BaseModel):
     report_id: int
     step: Step
     google_access_token: Optional[str] = None
+    skip_vector_save: Optional[bool] = False
 
 
