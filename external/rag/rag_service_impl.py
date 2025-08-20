@@ -56,11 +56,27 @@ class RagServiceImpl(RagService):
         try:
             clean_json_str = result.strip().replace("```json", "").replace("```", "")
             result_json = json.loads(clean_json_str)
+            
+            # 리스트로 반환된 경우 첫 번째 요소 사용
+            if isinstance(result_json, list):
+                if result_json and isinstance(result_json[0], dict):
+                    emotion_value = result_json[0].get("emotion")
+                    logger.warning(f"LLM이 리스트로 반환됨. 첫 번째 요소 사용: {emotion_value}")
+                else:
+                    emotion_value = None
+            else:
+                emotion_value = result_json.get("emotion")
+            
             return {
-                "comment_type": CommentType.from_emotion_code(result_json.get("emotion"))
+                "comment_type": CommentType.from_emotion_code(emotion_value)
             }
         except json.JSONDecodeError as e:
             print(f"JSON 파싱 오류: {e}, 원본 응답: {result}")
+            return {
+                "comment_type": CommentType.NEUTRAL
+            }
+        except Exception as e:
+            logger.error(f"댓글 분류 중 예상치 못한 오류: {e}, 응답: {result}")
             return {
                 "comment_type": CommentType.NEUTRAL
             }
