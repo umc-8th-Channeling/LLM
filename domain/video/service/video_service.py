@@ -1,7 +1,10 @@
 import logging
+from decimal import Decimal, ROUND_DOWN
+
 import isodate
 
 import numpy as np
+from rich.diagnose import report
 
 from core.enums.avg_type import AvgType
 from domain.content_chunk.repository.content_chunk_repository import ContentChunkRepository
@@ -178,6 +181,8 @@ class VideoService:
 
         # 채널 내 전체 영상 조회
         videos = await self.video_repository.find_by_channel_id(video.channel_id)
+        category_videos = [v for v in videos if v.video_category == video.video_category]
+
         if len(videos) == 1 :
             return {
                 "view_avg": 0,
@@ -189,42 +194,56 @@ class VideoService:
             }
 
         # 조회수 - 평균 대비 비율
-        avg = sum(v.view for v in videos if v.view is not None) / len(videos)
-        view_avg = await self._avg(video.view, avg)
+        logger.info(f"비디오 아이디 {video.id} 조회수 평균")
+        view_avg = sum(v.view for v in videos) / len(videos)
+        view_avg = await self._per(video.view, view_avg)
 
         # 조회수 - 카테고리별 평균 대비 비율
-        avg = sum(v.view for v in videos if v.video_category == video.video_category) / len(videos)
-        view_category_avg = await self._avg(video.view, avg)
+        logger.info("조회수 카테고리 평균")
+        view_category_videos = sum(v.view for v in category_videos)
+        view_category_avg = view_category_videos / len(category_videos)
+        view_category_per = await self._per(video.view, view_category_avg)
 
         # 좋아요수 - 평균 대비 비율
-        avg = sum(v.like_count for v in videos if v.like_count is not None) / len(videos)
-        like_avg = await self._avg(video.like_count, avg)
+        logger.info("좋아요수 평균")
+        like_avg = sum(v.like_count for v in videos) / len(videos)
+        like_avg = await self._per(video.like_count, like_avg)
 
         # 좋아요수 - 카테고리별 평균 대비 비율
-        avg = sum(v.like_count for v in videos if v.video_category == video.video_category) / len(videos)
-        like_category_avg = await self._avg(video.like_count, avg)
+        logger.info("좋아요수 카테고리 평균")
+        like_category_videos = sum(v.like_count for v in category_videos)
+        like_category_avg = like_category_videos / len(category_videos)
+        like_category_per = await self._per(video.like_count, like_category_avg)
 
         # 댓글수 - 평균 대비 비율
-        avg = sum(v.comment_count for v in videos if v.comment_count is not None) / len(videos)
-        comment_avg = await self._avg(video.comment_count, avg)
+        logger.info("댓글수 평균")
+        comment_avg = sum(v.comment_count for v in videos) / len(videos)
+        comment_avg = await self._per(video.comment_count, comment_avg)
 
         # 댓글수 - 카테고리별 평균 대비 비율
-        avg = sum(v.comment_count for v in videos if v.video_category == video.video_category) / len(videos)
-        comment_category_avg = await self._avg(video.comment_count, avg)
+        logger.info("댓글수 카테고리 평균")
+        comment_category_videos = sum(v.comment_count for v in category_videos)
+        comment_category_avg = comment_category_videos / len(category_videos)
+        comment_category_per = await self._per(video.comment_count, comment_category_avg)
 
         return {
             "view_avg": view_avg,
-            "view_category_avg": view_category_avg,
+            "view_category_avg": view_category_per,
             "like_avg": like_avg,
-            "like_category_avg": like_category_avg,
+            "like_category_avg": like_category_per,
             "comment_avg": comment_avg,
-            "comment_category_avg": comment_category_avg
+            "comment_category_avg": comment_category_per
         }
 
 
-    async def _avg(self, target, avg):
-        ratio_avg = target / avg if avg != 0 else 0
-        return round(ratio_avg * 100, 2)
+    # 평균 대비 증감률 : 평균 대비 퍼센트 아님
+    # 증감률 = (대상값 - 평균값) / 평균값
+    async def _per(self, target, avg):
+        logger.info(f"평균 {avg} / 대상 {target}")
+        ratio_avg = (target-avg) / avg if avg != 0 else 0
+        number = Decimal(ratio_avg*100).quantize(Decimal('0.01'), rounding=ROUND_DOWN) # 반올림 / 내림하지 않고 그대로 소수점을 나타내기 위함
+        return number
+
 
     async def analyze_metrics(self, video: Video, report_id: int, access_token: str) -> bool:
         """
