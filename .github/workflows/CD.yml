@@ -11,6 +11,30 @@ jobs:
   deploy:
     # 리눅스 서버의 Runner에서 실행
     runs-on: self-hosted
+    env:
+      # 공통 환경 변수 선언
+      # MySQL
+      MYSQL_HOST: ${{ secrets.MYSQL_HOST }}
+      MYSQL_PORT: "3306"
+      MYSQL_DATABASE: ${{ secrets.MYSQL_DATABASE }}
+      MYSQL_USER: ${{ secrets.MYSQL_USER }}
+      MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
+
+      # PostgreSQL
+      PG_HOST: ${{ secrets.PG_HOST }}
+      PG_PORT: "5432"
+      PG_DATABASE: ${{ secrets.PG_DATABASE }}
+      PG_USER: ${{ secrets.PG_USER }}
+      PG_PASSWORD: ${{ secrets.PG_PASSWORD }}
+
+      # API Keys
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
+      YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+
+      # Webshare Proxy
+      PROXY_USERNAME: ${{ secrets.PROXY_USERNAME }}
+      PROXY_PASSWORD: ${{ secrets.PROXY_PASSWORD }}
     steps:
       # 현재 레포지토리 가져오기
       - name: Checkout repository
@@ -41,8 +65,18 @@ jobs:
       - name: Stop kafka-consumer
         run: |
           cd deploy-configs
-          docker-compose stop kafka-consumer || true
-          docker-compose rm -f kafka-consumer || true
+          
+          # overview-consumer 중지
+          docker-compose stop overview-consumer || true
+          docker-compose rm -f overview-consumer || true
+          
+          # analysis-consumer 중지
+          docker-compose stop analysis-consumer || true
+          docker-compose rm -f analysis-consumer || true
+
+          # idea-consumer 중지
+          docker-compose stop idea-consumer || true
+          docker-compose rm -f idea-consumer || true
 
       # 이전 Docker 이미지 제거
       - name: Clean up old Docker images
@@ -60,59 +94,29 @@ jobs:
       # fastapi-app 다시 실행
       - name: Deploy fastapi-app
         working-directory: deploy-configs
-        env:
-          # MySQL
-          MYSQL_HOST: ${{ secrets.MYSQL_HOST }}
-          MYSQL_PORT: "3306"
-          MYSQL_DATABASE: ${{ secrets.MYSQL_DATABASE }}
-          MYSQL_USER: ${{ secrets.MYSQL_USER }}
-          MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
-
-          # PostgreSQL
-          PG_HOST: ${{ secrets.PG_HOST }}
-          PG_PORT: "5432"
-          PG_DATABASE: ${{ secrets.PG_DATABASE }}
-          PG_USER: ${{ secrets.PG_USER }}
-          PG_PASSWORD: ${{ secrets.PG_PASSWORD }}
-
-          # API Keys
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
-          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
-
-          # Webshare Proxy
-          PROXY_USERNAME: ${{ secrets.PROXY_USERNAME }}
-          PROXY_PASSWORD: ${{ secrets.PROXY_PASSWORD }}
-
         run: |
+          # 환경 변수가 job 레벨에서 선언되어 자동으로 전달됨
           docker-compose up -d --no-deps fastapi-app
 
-      # kafka-consumer 다시 실행
-      - name: Deploy kafka-consumer
+      # overview-consumer 다시 실행
+      - name: Deploy overview-consumer
         working-directory: deploy-configs
-        env:
-          # MySQL
-          MYSQL_HOST: ${{ secrets.MYSQL_HOST }}
-          MYSQL_PORT: "3306"
-          MYSQL_DATABASE: ${{ secrets.MYSQL_DATABASE }}
-          MYSQL_USER: ${{ secrets.MYSQL_USER }}
-          MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
-
-          # PostgreSQL
-          PG_HOST: ${{ secrets.PG_HOST }}
-          PG_PORT: "5432"
-          PG_DATABASE: ${{ secrets.PG_DATABASE }}
-          PG_USER: ${{ secrets.PG_USER }}
-          PG_PASSWORD: ${{ secrets.PG_PASSWORD }}
-
-          # API Keys
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
-          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
-
-          # Webshare Proxy
-          PROXY_USERNAME: ${{ secrets.PROXY_USERNAME }}
-          PROXY_PASSWORD: ${{ secrets.PROXY_PASSWORD }}
-
         run: |
-          docker-compose up -d --no-deps kafka-consumer
+          # 환경 변수가 job 레벨에서 선언되어 자동으로 전달됨
+          docker-compose up -d --no-deps overview-consumer
+
+      # analysis-consumer 다시 실행
+      - name: Deploy analysis-consumer
+        working-directory: deploy-configs
+        run: |
+          # 환경 변수가 job 레벨에서 선언되어 자동으로 전달됨
+          docker-compose up -d --no-deps analysis-consumer
+
+      # idea-consumer 다시 실행
+      - name: Deploy idea-consumer
+        working-directory: deploy-configs
+        run: |
+          # 환경 변수가 job 레벨에서 선언되어 자동으로 전달됨
+          docker-compose up -d --no-deps idea-consumer
+
+        
