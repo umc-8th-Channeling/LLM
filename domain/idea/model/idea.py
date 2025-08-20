@@ -1,4 +1,5 @@
 from datetime import datetime
+from core.utils.datetime_utils import get_kst_now_naive
 from typing import Optional
 
 from sqlmodel import SQLModel, Field
@@ -20,5 +21,5 @@ class Idea(SQLModel, table=True):
     is_book_marked:int = Field(default=0, description="북마크 여부 (0: 북마크 안함, 1: 북마크 함)")
 
     # BaseEntity 상속 부분 (created_at, updated_at)
-    created_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
-    updated_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
+    created_at: Optional[datetime] = Field(default_factory=get_kst_now_naive)
+    updated_at: Optional[datetime] = Field(default_factory=get_kst_now_naive)

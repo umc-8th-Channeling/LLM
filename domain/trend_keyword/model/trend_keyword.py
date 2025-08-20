@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Optional
 from sqlmodel import SQLModel, Field
 from domain.trend_keyword.model.trend_keyword_type import TrendKeywordType
+from core.utils.datetime_utils import get_kst_now_naive
 
 
 class TrendKeyword(SQLModel, table=True):
@@ -33,5 +34,5 @@ class TrendKeyword(SQLModel, table=True):
     )
     
     # BaseEntity 상속 부분 (created_at, updated_at)
-    created_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
-    updated_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
+    created_at: Optional[datetime] = Field(default_factory=get_kst_now_naive)
+    updated_at: Optional[datetime] = Field(default_factory=get_kst_now_naive)
