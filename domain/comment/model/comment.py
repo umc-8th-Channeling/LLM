@@ -3,6 +3,7 @@ from sqlalchemy import Enum as SQLEnum
 from datetime import datetime
 from typing import Optional
 from domain.comment.model.comment_type import CommentType
+from core.utils.datetime_utils import get_kst_now_naive
 
 
 class Comment(SQLModel, table=True):
@@ -18,5 +19,5 @@ class Comment(SQLModel, table=True):
     content: str = Field(description="댓글 내용")
     
     # BaseEntity 상속 부분 (created_at, updated_at)
-    created_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
-    updated_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
+    created_at: Optional[datetime] = Field(default_factory=get_kst_now_naive)
+    updated_at: Optional[datetime] = Field(default_factory=get_kst_now_naive)

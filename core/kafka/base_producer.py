@@ -6,6 +6,7 @@ from typing import Any, Dict, Optional
 from faststream.kafka import KafkaBroker
 from core.config.kafka_config import KafkaConfig
 from core.kafka.message import Message
+from core.utils.datetime_utils import get_kst_now_naive
 
 logger = logging.getLogger(__name__)
 
@@ -64,5 +65,5 @@ class BaseProducer:
         """메시지에 공통 메타데이터 추가"""
         return {
             **message,
-            "timestamp": datetime.utcnow().isoformat()     
+            "timestamp": get_kst_now_naive().isoformat()     
         }
