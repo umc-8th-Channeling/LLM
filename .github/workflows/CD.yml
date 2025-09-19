@@ -58,8 +58,8 @@ jobs:
       - name: Stop fastapi-app
         run: |
           cd deploy-configs
-          docker-compose stop fastapi-app || true
-          docker-compose rm -f fastapi-app || true
+          docker compose stop fastapi-app || true
+          docker compose rm -f fastapi-app || true
       
       # kafka-consumer가 실행중인 경우 중지
       - name: Stop kafka-consumer
@@ -67,16 +67,16 @@ jobs:
           cd deploy-configs
           
           # overview-consumer 중지
-          docker-compose stop overview-consumer || true
-          docker-compose rm -f overview-consumer || true
+          docker compose stop overview-consumer || true
+          docker compose rm -f overview-consumer || true
           
           # analysis-consumer 중지
-          docker-compose stop analysis-consumer || true
-          docker-compose rm -f analysis-consumer || true
+          docker compose stop analysis-consumer || true
+          docker compose rm -f analysis-consumer || true
 
           # idea-consumer 중지
-          docker-compose stop idea-consumer || true
-          docker-compose rm -f idea-consumer || true
+          docker compose stop idea-consumer || true
+          docker compose rm -f idea-consumer || true
 
       # 이전 Docker 이미지 제거
       - name: Clean up old Docker images
@@ -96,27 +96,27 @@ jobs:
         working-directory: deploy-configs
         run: |
           # 환경 변수가 job 레벨에서 선언되어 자동으로 전달됨
-          docker-compose up -d --no-deps fastapi-app
+          docker compose up -d --no-deps fastapi-app
 
       # overview-consumer 다시 실행
       - name: Deploy overview-consumer
         working-directory: deploy-configs
         run: |
           # 환경 변수가 job 레벨에서 선언되어 자동으로 전달됨
-          docker-compose up -d --no-deps overview-consumer
+          docker compose up -d --no-deps overview-consumer
 
       # analysis-consumer 다시 실행
       - name: Deploy analysis-consumer
         working-directory: deploy-configs
         run: |
           # 환경 변수가 job 레벨에서 선언되어 자동으로 전달됨
-          docker-compose up -d --no-deps analysis-consumer
+          docker compose up -d --no-deps analysis-consumer
 
       # idea-consumer 다시 실행
       - name: Deploy idea-consumer
         working-directory: deploy-configs
         run: |
           # 환경 변수가 job 레벨에서 선언되어 자동으로 전달됨
-          docker-compose up -d --no-deps idea-consumer
+          docker compose up -d --no-deps idea-consumer
 
         
