@@ -78,6 +78,14 @@ jobs:
           docker compose stop idea-consumer || true
           docker compose rm -f idea-consumer || true
 
+      # PostgreSQL이 실행중인 경우 중지
+      - name: Stop PostgreSQL
+        run: |
+          cd deploy-configs
+          docker compose stop postgres || true
+          docker compose rm -f postgres || true
+
+
       # 이전 Docker 이미지 제거
       - name: Clean up old Docker images
         run: |
@@ -86,10 +94,29 @@ jobs:
 
           # dangling 이미지 제거
           docker image prune -f
-      
+
       # Docker 이미지 Pull
       - name: Pull Docker image
         run: docker pull ${{ secrets.DOCKER_USERNAME }}/channeling-llm:latest
+
+      # FastApi 실행 전, PostgreSQL 실행
+      - name: Deploy PostgreSQL and wait
+        working-directory: deploy-configs
+        run: |
+          # PostgreSQL 컨테이너 실행
+          docker compose up -d --no-deps postgres
+      
+          # DB ready 될 때까지 최대 60초 대기
+          for i in {1..12}; do
+            docker exec postgres pg_isready -U $PG_USER -d $PG_DATABASE
+            if [ $? -eq 0 ]; then
+              echo "PostgreSQL is ready!"
+              break
+            fi
+            echo "Waiting for PostgreSQL..."
+            sleep 5
+          done
+
 
       # fastapi-app 다시 실행
       - name: Deploy fastapi-app
