@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from core.config.database_config import test_pg_connection, test_mysql_connection
 from domain.report.controller.report_controller import router as report_router
+from domain.idea.controller.idea_controller import router as idea_router
 from response.code.status.success_status import SuccessStatus
 from response.api_response import ApiResponse
 from core.kafka.kafka_broker import kafka_broker
@@ -13,6 +14,7 @@ app = FastAPI(title="Channeling LLM API", version="1.0.0")
 
 # 라우터 등록
 app.include_router(report_router)
+app.include_router(idea_router)
 
 @app.on_event("startup")
 async def on_startup():
