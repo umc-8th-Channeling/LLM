@@ -1,15 +1,14 @@
 import asyncio
+import json
+import logging
 import time
 
 from domain.channel.repository.channel_repository import ChannelRepository
+from domain.idea.dto.idea_dto import IdeaRequest
 from domain.idea.repository.idea_repository import IdeaRepository
-from domain.report.controller.report_controller import report_repository
 from domain.report.repository.report_repository import ReportRepository
 from domain.video.repository.video_repository import VideoRepository
 from external.rag.rag_service_impl import RagServiceImpl
-import json
-import logging
-
 from external.youtube.transcript_service import TranscriptService
 
 logger = logging.getLogger(__name__)
@@ -27,25 +26,17 @@ class IdeaService:
     """
     아이디어 생성 요청 : 최근 3개 비디오 요약본 및 채널 정보 활용
     """
-    async def create_idea(self, channel_id: int):
+    async def create_idea(self, req: IdeaRequest):
         start_time = time.time()
-        logger.info(f"💡 아이디어 생성 시작 - Channel ID: {channel_id}")
+        logger.info(f"💡 아이디어 생성 시작 - Channel ID: {req.channel_id}")
         
         try:
-            channel = await self.channel_repository.find_by_id(channel_id)
-            videos = await self.video_repository.find_by_channel_id(channel_id, 3)
+            channel = await self.channel_repository.find_by_id(req.channel_id)
+            videos = await self.video_repository.find_by_channel_id(req.channel_id, 3)
             summary = ", ".join([video.title if video.title else "" for video in videos])
-            # scripts = []
-            # for video in videos:
-            #     report = await report_repository.find_by_video_id(video.id)
-            #     if not report:
-            #         script = self.transcript_service.get_formatted_transcript(video.youtube_id)
-            #     else:
-            #         script = report.summary
-            #     scripts.append(script)
 
             # 아이디어 분석 요청
-            idea_results = await self.rag_service.analyze_idea(channel, summary)
+            idea_results = await self.rag_service.analyze_idea(req, channel, summary)
 
             # 아이디어 분석 결과를 Report에 저장
             db_start = time.time()
@@ -60,12 +51,14 @@ class IdeaService:
                 }
                 ideas.append(idea)
 
-            await self.idea_repository.save_bulk(ideas)
+            ideas = await self.idea_repository.save_bulk(ideas)
             db_time = time.time() - db_start
             logger.info(f"🗄️ 아이디어 DB 저장 완료 ({db_time:.2f}초) - {len(ideas)}개 아이디어")
             
             total_time = time.time() - start_time
             logger.info(f"💡 아이디어 생성 전체 완료 ({total_time:.2f}초)")
+
+            return ideas
             
         except Exception as e:
             total_time = time.time() - start_time

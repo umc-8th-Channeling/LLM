@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List
 from domain.channel.model.channel import Channel
+from domain.idea.dto.idea_dto import IdeaRequest
 
 
 class RagService(ABC):
@@ -22,7 +23,7 @@ class RagService(ABC):
         pass
     
     @abstractmethod
-    async def analyze_idea(self, channel: Channel, summary: str) -> List[Dict[str, Any]]:
+    async def analyze_idea(self, idea_req: IdeaRequest, channel: Channel, summary: str) -> List[Dict[str, Any]]:
         """아이디어 분석"""
         pass
     

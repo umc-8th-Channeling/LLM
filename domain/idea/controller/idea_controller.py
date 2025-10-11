@@ -1,21 +1,12 @@
 import logging
 
 from fastapi import APIRouter
-from pydantic import BaseModel
 
-from core.enums.video_category import VideoCategory
+from domain.idea.dto.idea_dto import IdeaRequest, PopularRequest
 from domain.idea.service.idea_service import IdeaService
-from domain.report.controller.report_controller import rag_service
-from external.rag.rag_service import RagService
 from external.rag.rag_service_impl import RagServiceImpl
 from response.api_response import ApiResponse
 from response.code.status.success_status import SuccessStatus
-
-class IdeaRequest(BaseModel):
-    channel_id: int
-
-class PopularRequest(BaseModel):
-    category: VideoCategory
 
 router = APIRouter(
     prefix="/ideas",
@@ -25,18 +16,18 @@ router = APIRouter(
 logger = logging.getLogger(__name__)
 
 idea_service = IdeaService()
-reg_service = RagServiceImpl()
+rag_service = RagServiceImpl()
 
 # 아이디어 생성
-@router.post("/")
-async def create_idea(idea: IdeaRequest):
+@router.post("")
+async def create_idea(req: IdeaRequest):
     try:
-        await idea_service.create_idea(idea.channel_id)
+        ideas = await idea_service.create_idea(req)
     except Exception as e:
         logger.error(f"아이디어 생성 프로세스 실패: {e!r}")
         raise
 
-    return ApiResponse.on_success(SuccessStatus._OK, "일단 성공이여")
+    return ApiResponse.on_success(SuccessStatus._OK, ideas)
 
 # 인기 영상 호출
 @router.post("/popular")

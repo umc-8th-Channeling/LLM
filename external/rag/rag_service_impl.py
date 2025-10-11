@@ -1,27 +1,28 @@
-from core.enums.video_category import VideoCategory
-from external.rag.rag_service import RagService
-from external.youtube.transcript_service import TranscriptService
-from external.youtube.video_detail_service import VideoDetailService
-from external.youtube.youtube_video_service import VideoService
-from external.youtube.youtube_comment_service import YoutubeCommentService
-from domain.content_chunk.repository.content_chunk_repository import ContentChunkRepository
-from domain.video.model.video import Video
-from domain.channel.model.channel import Channel
-from domain.comment.model.comment_type import CommentType
-from core.enums.source_type import SourceTypeEnum
-from langchain_core.documents import Document
-from langchain_openai import ChatOpenAI
-from langchain_core.prompts import PromptTemplate
-from langchain_core.prompts.chat import ChatPromptTemplate, HumanMessagePromptTemplate
-from langchain.chains.combine_documents import create_stuff_documents_chain
-from core.llm.prompt_template_manager import PromptTemplateManager
-from external.youtube.trend_service import TrendService
-from typing import List, Dict, Any
-from datetime import datetime
 import json
 import logging
 import time
+from datetime import datetime
+from typing import List, Dict, Any
 
+from langchain.chains.combine_documents import create_stuff_documents_chain
+from langchain_core.documents import Document
+from langchain_core.prompts import PromptTemplate
+from langchain_core.prompts.chat import ChatPromptTemplate, HumanMessagePromptTemplate
+from langchain_openai import ChatOpenAI
+
+from core.enums.source_type import SourceTypeEnum
+from core.enums.video_category import VideoCategory
+from core.llm.prompt_template_manager import PromptTemplateManager
+from domain.channel.model.channel import Channel
+from domain.comment.model.comment_type import CommentType
+from domain.content_chunk.repository.content_chunk_repository import ContentChunkRepository
+from domain.idea.dto.idea_dto import IdeaRequest
+from external.rag.rag_service import RagService
+from external.youtube.transcript_service import TranscriptService
+from external.youtube.trend_service import TrendService
+from external.youtube.video_detail_service import VideoDetailService
+from external.youtube.youtube_comment_service import YoutubeCommentService
+from external.youtube.youtube_video_service import VideoService
 
 logger = logging.getLogger(__name__)
 
@@ -122,9 +123,9 @@ class RagServiceImpl(RagService):
                 context=pop_video_text)
 
 
-    async def analyze_idea(self, channel: Channel, summary: str) -> List[Dict[str, Any]]:
+    async def analyze_idea(self, idea_req: IdeaRequest, channel: Channel, summary: str) -> List[Dict[str, Any]]:
         try:
-            # 1. 내 채널, 내 영상
+            # 1. 내 채널 정보 + 요청 내용
             origin_context = f"""
 - 채널명: {channel.name}
 - 채널 컨셉: {channel.concept}
@@ -133,6 +134,12 @@ class RagServiceImpl(RagService):
 - 최근 영상의 핵심 내용: {summary}
             """
             logging.info("아이디어 내 채널 확인 : %s", origin_context)
+
+            request_context = f"""
+- 아이디어 키워드 : {idea_req.keyword}
+- 아이디어 설명 : {idea_req.detail}
+- 아이디어 영상 유형 : {idea_req.video_type}
+"""
 
             # 2. 영상과 의미적으로 가장 유사한 '인기 영상' 청크를 검색 (Vector DB)
             search_start = time.time()
@@ -152,11 +159,12 @@ class RagServiceImpl(RagService):
             popularity_context = "\n".join([chunk.get("content", "") for chunk in similar_chunks])
 
             input_data = {
+                "request": request_context,
                 "origin": origin_context,
                 "popularity": popularity_context
             }
             full_prompt = PromptTemplateManager.get_idea_prompt(input_data)
-            logger.error("🤖 LLM 호출 전 전체 프롬프트:\n%s", full_prompt)
+            logger.info("🤖 LLM 호출 전 전체 프롬프트:\n%s", full_prompt)
 
             # 4. LLM 실행
             llm_start = time.time()
