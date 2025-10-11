@@ -13,7 +13,7 @@ class Idea(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
 
     # Fk
-    video_id:int = Field(description="video id")
+    channel_id:int = Field(description="channel id")
 
     title:str = Field(description="아이디어 제목")
     content:str = Field(description="아이디어 내용")
