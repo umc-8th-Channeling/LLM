@@ -1,15 +1,16 @@
 import asyncio
 import time
 
-from domain.channel.model.channel import Channel
+from domain.channel.repository.channel_repository import ChannelRepository
 from domain.idea.repository.idea_repository import IdeaRepository
 from domain.report.controller.report_controller import report_repository
 from domain.report.repository.report_repository import ReportRepository
-from domain.video.model.video import Video
+from domain.video.repository.video_repository import VideoRepository
 from external.rag.rag_service_impl import RagServiceImpl
 import json
 import logging
 
+from external.youtube.transcript_service import TranscriptService
 
 logger = logging.getLogger(__name__)
 
@@ -18,29 +19,40 @@ class IdeaService:
         self.idea_repository = IdeaRepository()
         self.rag_service = RagServiceImpl()
         self.report_repository = ReportRepository()
+        self.video_repository = VideoRepository()
+        self.transcript_service = TranscriptService()
+        self.channel_repository = ChannelRepository()
+
 
     """
-    아이디어 생성 요청
+    아이디어 생성 요청 : 최근 3개 비디오 요약본 및 채널 정보 활용
     """
-    async def create_idea(self, video: Video, channel: Channel, report_id: int):
+    async def create_idea(self, channel_id: int):
         start_time = time.time()
-        logger.info(f"💡 아이디어 생성 시작 - Report ID: {report_id}")
+        logger.info(f"💡 아이디어 생성 시작 - Channel ID: {channel_id}")
         
         try:
-            summary = await self.wait_for_summary(report_id)
-            if not summary:
-                logger.warning(f"Report ID {report_id}에 대한 요약본을 찾을 수 없어 아이디어 생성을 건너뜁니다.")
-                summary = ""
+            channel = await self.channel_repository.find_by_id(channel_id)
+            videos = await self.video_repository.find_by_channel_id(channel_id, 3)
+            summary = ", ".join([video.title if video.title else "" for video in videos])
+            # scripts = []
+            # for video in videos:
+            #     report = await report_repository.find_by_video_id(video.id)
+            #     if not report:
+            #         script = self.transcript_service.get_formatted_transcript(video.youtube_id)
+            #     else:
+            #         script = report.summary
+            #     scripts.append(script)
 
             # 아이디어 분석 요청
-            idea_results = await self.rag_service.analyze_idea(video, channel, summary)
+            idea_results = await self.rag_service.analyze_idea(channel, summary)
 
             # 아이디어 분석 결과를 Report에 저장
             db_start = time.time()
             ideas = []
             for idea_result in idea_results:
                 idea = {
-                    "video_id": video.id,
+                    "channel_id": channel.id,
                     "title": idea_result.get("title"),
                     "content": idea_result.get("description"),
                     "hash_tag": json.dumps(idea_result.get("tags"), ensure_ascii=False),
